@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-center mt-5">
+    <div class="card shadow w-100" style="max-width: 1200px;">
+        <div class="card-body px-5">
+            <ul class="nav nav-tabs" id="signupLoginTabs" role="tablist">
+                <!-- Signup Tab -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" type="button" role="tab" aria-controls="signup" aria-selected="true">
+                        Signup
+                    </button>
+                </li>
+                <!-- Login Tab -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab" aria-controls="login" aria-selected="false">
+                        Login
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content" id="signupLoginContent">
+                <!-- Signup Form -->
+                <div class="tab-pane fade show active" id="signup" role="tabpanel" aria-labelledby="signup-tab">
+                    <form action="/signup" method="POST" class="mt-4">
+                        <!-- Username -->
+                        <div class="mb-4 row align-items-center">
+                            <label for="signup-username" class="col-sm-3 col-form-label">Username:</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="signup-username" name="username" required>
+                            </div>
+                        </div>
+                
+                        <!-- Password -->
+                        <div class="mb-4 row align-items-center">
+                            <label for="signup-password" class="col-sm-3 col-form-label">Password:</label>
+                            <div class="col-sm-9">
+                                <input type="password" class="form-control" id="signup-password" name="password" required>
+                            </div>
+                        </div>
+                
+                        <!-- Phone Number -->
+                        <div class="mb-4 row align-items-center">
+                            <label for="signup-phone" class="col-sm-3 col-form-label">Phone Number:</label>
+                            <div class="col-sm-9">
+                                <input type="tel" class="form-control" id="signup-phone" name="phone" required>
+                            </div>
+                        </div>
+                
+                        <!-- Role Selection -->
+                        <div class="mb-4 row">
+                            <label class="col-sm-3 col-form-label">Register As:</label>
+                            <div class="col-sm-9">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="role" id="role-farmer" value="Farmer" required>
+                                    <label class="form-check-label" for="role-farmer">
+                                        Farmer
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="role" id="role-customer" value="Customer" required>
+                                    <label class="form-check-label" for="role-customer">
+                                        Customer
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+                
+                        <!-- Login Link -->
+                        <p class="mt-3 text-center">
+                            Already have an account? 
+                            <a href="#" onclick="document.getElementById('login-tab').click()">Click here to Login</a>
+                        </p>
+                    </form>
+                </div>
+                
+                <!-- Login Form -->
+                <div class="tab-pane fade" id="login" role="tabpanel" aria-labelledby="login-tab">
+                    <form action="/login" method="POST" class="mt-4">
+                        <div class="mb-4 row align-items-center">
+                            <label for="login-username" class="col-sm-3 col-form-label">Username:</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="login-username" name="username" required>
+                            </div>
+                        </div>
+                        <div class="mb-4 row align-items-center">
+                            <label for="login-password" class="col-sm-3 col-form-label">Password:</label>
+                            <div class="col-sm-9">
+                                <input type="password" class="form-control" id="login-password" name="password" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Log In</button>
+                        <p class="mt-3 text-center">
+                            Don't have an account? 
+                            <a href="#" onclick="document.getElementById('signup-tab').click()">Click here to Signup</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

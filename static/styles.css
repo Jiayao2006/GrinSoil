@@ -1,0 +1,103 @@
+/* Navbar styles */
+.navbar-custom {
+    background-color: #fff;
+    /* White background */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow */
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #333;
+    /* Darker text color */
+}
+
+.nav-link {
+    color: #333;
+    font-weight: bold;
+}
+
+.nav-link:hover {
+    color: #28a745;
+    /* Green on hover */
+}
+
+.btn-account {
+    background-color: #28a745;
+    /* Green button */
+    color: white;
+    border: none;
+    font-size: 1rem;
+    padding: 8px 16px;
+    /* Smaller padding for responsiveness */
+    transition: all 0.3s;
+    /* Smooth transition on hover */
+}
+
+.btn-account:hover {
+    background-color: #1b6d2d;
+    /* Darker green on hover */
+    color: white;
+    transition: all 0.3s;
+    /* Smooth transition on hover */
+}
+
+/* Hero Section */
+.hero {
+    background-image: url('placeholder-image.jpg');
+    /* Replace with your image */
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    color: white;
+}
+
+.overlay {
+    background: rgba(0, 0, 0, 0.5);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Footer styles */
+.footer {
+    background-color: #333;
+    color: white;
+    padding: 20px 0;
+}
+
+.footer p {
+    margin: 0;
+}
+
+.footer i {
+    color: white;
+    margin: 0 5px;
+}
+
+.footer i:hover {
+    color: #28a745;
+}
+
+/* Sign up / login page */
+body {
+    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+}
+
+.card {
+    max-width: 500px;
+    margin: auto;
+}
+
+.nav-tabs .nav-link {
+    border-radius: 0;
+}
+
+label.col-form-label{
+    padding: 0;
+}
