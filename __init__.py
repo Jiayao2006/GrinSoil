@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import shelve
 import bcrypt
 from functools import wraps
@@ -26,6 +26,16 @@ def init_admin():
             }
             admin_db['admin'] = admin_data
             print("Default admin account created")
+
+# Decorator for login required
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Please log in first', 'danger')
+            return redirect(url_for('signup_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Decorator for admin-only routes
 def admin_required(f):
@@ -63,6 +73,8 @@ def signup():
         flash('Username already exists', 'danger')
     return redirect(url_for('signup_login'))
 
+"""Login route"""
+# Also ensure that your login route sets the session
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username')
@@ -74,6 +86,9 @@ def login():
     
     user = user_manager.authenticate_user(username, password)
     if user:
+        # Set session variables
+        session['username'] = username
+        session['role'] = user.role
         flash('Login successful!', 'success')
         if user.role == 'Farmer':
             return redirect(url_for('farmer_dashboard'))
@@ -82,6 +97,33 @@ def login():
     
     flash('Invalid username or password', 'danger')
     return redirect(url_for('signup_login'))
+
+"""Logout route"""
+@app.route('/logout')
+def logout():
+    # Clear the session
+    session.clear()
+    flash('You have been logged out successfully', 'success')
+    return redirect(url_for('home'))
+
+
+@app.route('/farmer_dashboard')
+@login_required
+def farmer_dashboard():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('signup_login'))
+    user = user_manager.get_user(session['username'])
+    return render_template('farmer_dashboard.html', user=user)
+
+@app.route('/customer_dashboard')
+@login_required
+def customer_dashboard():
+    if session.get('role') != 'Customer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('signup_login'))
+    user = user_manager.get_user(session['username'])
+    return render_template('customer_dashboard.html', user=user)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -164,23 +206,12 @@ def admin_logout():
     flash('Logged out successfully', 'success')
     return response
 
-# Placeholder routes for dashboards
-@app.route('/farmer_dashboard')
-def farmer_dashboard():
-    return "Farmer Dashboard - Coming Soon"
-
-@app.route('/customer_dashboard')
-def customer_dashboard():
-    return "Customer Dashboard - Coming Soon"
-
-# Filter routes to view specific user types
 @app.route('/admin/users/<role>')
 @admin_required
 def filter_users(role):
     users = user_manager.get_users_by_role(role)
     return render_template('admin_dashboard.html', users=users)
 
-# Route to view user details
 @app.route('/admin/user/<username>')
 @admin_required
 def view_user(username):
