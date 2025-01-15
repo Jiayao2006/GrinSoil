@@ -393,6 +393,64 @@ def get_product(product_id):
         return jsonify(product.to_dict())
     return jsonify({'error': 'Product not found'}), 404
 
+notification_manager = NotificationManager()
+
+# Add these routes
+@app.route('/notifications')
+@login_required
+def notifications():
+    """View notifications relevant to user's role"""
+    notifications = notification_manager.get_notifications_for_role(session['role'])
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/admin/notifications')
+@admin_required
+def admin_notifications():
+    """Admin view of all notifications"""
+    notifications = notification_manager.get_all_notifications()
+    return render_template('admin_notifications.html', notifications=notifications)
+
+@app.route('/admin/notification/add', methods=['POST'])
+@admin_required
+def add_notification():
+    title = request.form.get('title')
+    content = request.form.get('content')
+    target_role = request.form.get('target_role')
+    
+    if not all([title, content, target_role]):
+        flash('All fields are required', 'danger')
+        return redirect(url_for('admin_notifications'))
+    
+    notification_manager.create_notification(title, content, target_role)
+    flash('Notification created successfully', 'success')
+    return redirect(url_for('admin_notifications'))
+
+@app.route('/admin/notification/update/<notification_id>', methods=['POST'])
+@admin_required
+def update_notification(notification_id):
+    title = request.form.get('title')
+    content = request.form.get('content')
+    target_role = request.form.get('target_role')
+    
+    if not all([title, content, target_role]):
+        flash('All fields are required', 'danger')
+        return redirect(url_for('admin_notifications'))
+    
+    if notification_manager.update_notification(notification_id, title, content, target_role):
+        flash('Notification updated successfully', 'success')
+    else:
+        flash('Failed to update notification', 'danger')
+    return redirect(url_for('admin_notifications'))
+
+@app.route('/admin/notification/delete/<notification_id>')
+@admin_required
+def delete_notification(notification_id):
+    if notification_manager.delete_notification(notification_id):
+        flash('Notification deleted successfully', 'success')
+    else:
+        flash('Failed to delete notification', 'danger')
+    return redirect(url_for('admin_notifications'))
+
 if __name__ == '__main__':
     init_admin()
     app.run(debug=True)
