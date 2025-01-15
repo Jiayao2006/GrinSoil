@@ -2,11 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import shelve
 import bcrypt
 from functools import wraps
-from models import UserManager, User
+from models import *
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+
+
+"""admin management"""
 # Create a global UserManager instance
 user_manager = UserManager()
 
@@ -106,7 +110,7 @@ def logout():
     flash('You have been logged out successfully', 'success')
     return redirect(url_for('home'))
 
-
+"""farmer and customer dashboard"""
 @app.route('/farmer_dashboard')
 @login_required
 def farmer_dashboard():
@@ -114,7 +118,8 @@ def farmer_dashboard():
         flash('Access denied', 'danger')
         return redirect(url_for('signup_login'))
     user = user_manager.get_user(session['username'])
-    return render_template('farmer_dashboard.html', user=user)
+    counts = product_manager.get_status_counts(session['username'])
+    return render_template('farmer_dashboard.html', user=user, product_counts=counts)
 
 @app.route('/customer_dashboard')
 @login_required
@@ -123,7 +128,8 @@ def customer_dashboard():
         flash('Access denied', 'danger')
         return redirect(url_for('signup_login'))
     user = user_manager.get_user(session['username'])
-    return render_template('customer_dashboard.html', user=user)
+    counts = product_manager.get_status_counts(session['username'])
+    return render_template('customer_dashboard.html', user=user, product_counts=counts)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -220,6 +226,64 @@ def view_user(username):
         return render_template('user_details.html', user=user)
     flash('User not found', 'danger')
     return redirect(url_for('admin_dashboard'))
+
+"""food expiry tracker"""
+product_manager = ProductManager()
+
+@app.route('/farmer/expiry-tracker')
+@login_required
+def farmer_expiry_tracker():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    products = product_manager.get_user_products(session['username'])
+    return render_template('expiry_tracker.html', products=products, user_role='Farmer')
+
+@app.route('/customer/expiry-tracker')
+@login_required
+def customer_expiry_tracker():
+    if session.get('role') != 'Customer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    products = product_manager.get_user_products(session['username'])
+    return render_template('expiry_tracker.html', products=products, user_role='Customer')
+
+@app.route('/product/add', methods=['POST'])
+@login_required
+def add_product():
+    name = request.form.get('name')
+    expiry_date = request.form.get('expiry_date')
+    
+    if not all([name, expiry_date]):
+        flash('All fields are required', 'danger')
+        return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+    
+    product_manager.create_product(name, expiry_date, session['username'])
+    flash('Product added successfully', 'success')
+    return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+
+@app.route('/product/update-status/<product_id>', methods=['POST'])
+@login_required
+def update_product_status(product_id):
+    new_status = request.form.get('status')
+    if new_status not in ['fresh', 'expiring-soon', 'expired', 'eaten']:
+        flash('Invalid status', 'danger')
+        return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+        
+    if product_manager.update_product_status(product_id, new_status):
+        flash('Product status updated successfully', 'success')
+    else:
+        flash('Failed to update product status', 'danger')
+    return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+
+@app.route('/product/delete/<product_id>')
+@login_required
+def delete_product(product_id):
+    if product_manager.delete_product(product_id):
+        flash('Product deleted successfully', 'success')
+    else:
+        flash('Failed to delete product', 'danger')
+    return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
 
 if __name__ == '__main__':
     init_admin()
