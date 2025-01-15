@@ -258,3 +258,155 @@ class ProductManager:
             if product.status in counts:
                 counts[product.status] += 1
         return counts
+    
+    def get_product(self, product_id: str) -> Optional[Product]:
+        """Get a specific product"""
+        with self.__get_db() as db:
+            if product_id not in db:
+                return None
+            data = db[product_id]
+            return Product(
+                data['id'],
+                data['name'],
+                data['expiry_date'],
+                data['status'],
+                data['owner']
+            )
+
+    def update_product(self, product_id: str, name: str, expiry_date: str) -> bool:
+        """Update product details"""
+        with self.__get_db() as db:
+            if product_id not in db:
+                return False
+            product_data = db[product_id]
+            # Keep existing status and owner
+            product = Product(
+                product_id,
+                name,
+                expiry_date,
+                product_data['status'],
+                product_data['owner']
+            )
+            db[product_id] = product.to_dict()
+            return True
+        
+"""Review section"""
+class Review:
+    def __init__(self, id: str, content: str, author: str, created_at: str, updated_at: str = None):
+        self.__id = id
+        self.__content = content
+        self.__author = author
+        self.__created_at = created_at
+        self.__updated_at = updated_at
+
+    @property
+    def id(self) -> str:
+        return self.__id
+    
+    @property
+    def content(self) -> str:
+        return self.__content
+    
+    @property
+    def author(self) -> str:
+        return self.__author
+    
+    @property
+    def created_at(self) -> str:
+        return self.__created_at
+    
+    @property
+    def updated_at(self) -> str:
+        return self.__updated_at
+    
+    @content.setter
+    def content(self, new_content: str) -> None:
+        if not new_content.strip():
+            raise ValueError("Review content cannot be empty")
+        self.__content = new_content
+        self.__updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.__id,
+            'content': self.__content,
+            'author': self.__author,
+            'created_at': self.__created_at,
+            'updated_at': self.__updated_at
+        }
+
+class ReviewManager:
+    def __init__(self):
+        self.__db_name = 'reviews_db'
+    
+    def __get_db(self):
+        return shelve.open(self.__db_name)
+    
+    def create_review(self, content: str, author: str) -> str:
+        """Create a new review"""
+        with self.__get_db() as db:
+            review_id = str(datetime.now().timestamp())
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            review = Review(review_id, content, author, created_at)
+            db[review_id] = review.to_dict()
+            return review_id
+    
+    def get_all_reviews(self) -> List[Review]:
+        """Get all reviews"""
+        with self.__get_db() as db:
+            return [Review(
+                data['id'],
+                data['content'],
+                data['author'],
+                data['created_at'],
+                data['updated_at']
+            ) for data in db.values()]
+    
+    def get_user_reviews(self, username: str) -> List[Review]:
+        """Get all reviews by a specific user"""
+        with self.__get_db() as db:
+            return [Review(
+                data['id'],
+                data['content'],
+                data['author'],
+                data['created_at'],
+                data['updated_at']
+            ) for data in db.values() if data['author'] == username]
+    
+    def update_review(self, review_id: str, content: str) -> bool:
+        """Update a review"""
+        with self.__get_db() as db:
+            if review_id not in db:
+                return False
+            review_data = db[review_id]
+            review = Review(
+                review_id,
+                content,
+                review_data['author'],
+                review_data['created_at'],
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            db[review_id] = review.to_dict()
+            return True
+    
+    def delete_review(self, review_id: str) -> bool:
+        """Delete a review"""
+        with self.__get_db() as db:
+            if review_id not in db:
+                return False
+            del db[review_id]
+            return True
+    
+    def get_review(self, review_id: str) -> Optional[Review]:
+        """Get a specific review"""
+        with self.__get_db() as db:
+            if review_id not in db:
+                return None
+            data = db[review_id]
+            return Review(
+                data['id'],
+                data['content'],
+                data['author'],
+                data['created_at'],
+                data['updated_at']
+            )

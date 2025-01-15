@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}About GrinSOIL{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- About Section -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h1 class="card-title text-center mb-4">About GrinSOIL</h1>
+                    <p class="lead">
+                        GrinSOIL is dedicated to connecting farmers and customers while promoting sustainable agriculture
+                        and reducing food waste.
+                    </p>
+                    <!-- Add your about content here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Public Reviews Section -->
+    <div class="row mt-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="card-title mb-0">What Our Community Says</h2>
+                </div>
+                <div class="card-body">
+                    {% if reviews %}
+                        {% for review in reviews %}
+                        <div class="review-card mb-4">
+                            <div class="d-flex align-items-start">
+                                <div class="review-avatar me-3">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                         style="width: 40px; height: 40px;">
+                                        {{ review.author[0]|upper }}
+                                    </div>
+                                </div>
+                                <div class="review-content flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">{{ review.author }}</h6>
+                                        <small class="text-muted">
+                                            {{ review.created_at }}
+                                            {% if review.updated_at %}
+                                                <span class="ms-2">(edited)</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <p class="mb-0">{{ review.content }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% if not loop.last %}
+                            <hr class="my-4">
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No reviews yet. Be the first to share your experience!</p>
+                            {% if not session.get('username') %}
+                                <a href="{{ url_for('signup_login') }}" class="btn btn-primary mt-3">Sign Up to Leave a Review</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .review-card {
+        transition: transform 0.2s;
+    }
+    .review-card:hover {
+        transform: translateX(5px);
+    }
+    .review-avatar {
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}

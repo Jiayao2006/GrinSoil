@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import shelve
 import bcrypt
 from functools import wraps
@@ -8,6 +8,90 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# Decorator for login required
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Please log in first', 'danger')
+            return redirect(url_for('signup_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+"""Reviews Section"""
+# Add to __init__.py after other imports
+review_manager = ReviewManager()
+
+# Add these routes
+@app.route('/reviews')
+def reviews():
+    all_reviews = review_manager.get_all_reviews()
+    return render_template('reviews.html', reviews=all_reviews)
+
+@app.route('/my-reviews')
+@login_required
+def my_reviews():
+    user_reviews = review_manager.get_user_reviews(session['username'])
+    return render_template('my_reviews.html', reviews=user_reviews)
+
+@app.route('/review/add', methods=['POST'])
+@login_required
+def add_review():
+    content = request.form.get('content')
+    if not content:
+        flash('Review content is required', 'danger')
+        return redirect(url_for('my_reviews'))
+    
+    review_manager.create_review(content, session['username'])
+    flash('Review added successfully', 'success')
+    return redirect(url_for('my_reviews'))
+
+@app.route('/review/update/<review_id>', methods=['POST'])
+@login_required
+def update_review(review_id):
+    content = request.form.get('content')
+    review = review_manager.get_review(review_id)
+    
+    if not review or review.author != session['username']:
+        flash('Review not found or unauthorized', 'danger')
+        return redirect(url_for('my_reviews'))
+    
+    if review_manager.update_review(review_id, content):
+        flash('Review updated successfully', 'success')
+    else:
+        flash('Failed to update review', 'danger')
+    return redirect(url_for('my_reviews'))
+
+@app.route('/review/delete/<review_id>')
+@login_required
+def delete_review(review_id):
+    review = review_manager.get_review(review_id)
+    
+    if not review or review.author != session['username']:
+        flash('Review not found or unauthorized', 'danger')
+        return redirect(url_for('my_reviews'))
+    
+    if review_manager.delete_review(review_id):
+        flash('Review deleted successfully', 'success')
+    else:
+        flash('Failed to delete review', 'danger')
+    return redirect(url_for('my_reviews'))
+
+# Update the about route to include reviews
+@app.route('/about')
+def about():
+    """Public route for About page - anyone can view reviews"""
+    all_reviews = review_manager.get_all_reviews()
+    # Sort reviews by created_at date, most recent first
+    sorted_reviews = sorted(all_reviews, key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"), reverse=True)
+    return render_template('about.html', reviews=sorted_reviews)
+
+@app.route('/api/reviews')
+def get_reviews():
+    """Public API endpoint to get all reviews"""
+    all_reviews = review_manager.get_all_reviews()
+    sorted_reviews = sorted(all_reviews, key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"), reverse=True)
+    return jsonify([review.to_dict() for review in sorted_reviews])
 
 
 """admin management"""
@@ -284,6 +368,30 @@ def delete_product(product_id):
     else:
         flash('Failed to delete product', 'danger')
     return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+
+@app.route('/product/update/<product_id>', methods=['POST'])
+@login_required
+def update_product(product_id):
+    name = request.form.get('name')
+    expiry_date = request.form.get('expiry_date')
+    
+    if not all([name, expiry_date]):
+        flash('All fields are required', 'danger')
+        return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+    
+    if product_manager.update_product(product_id, name, expiry_date):
+        flash('Product updated successfully', 'success')
+    else:
+        flash('Failed to update product', 'danger')
+    return redirect(url_for(f'{session["role"].lower()}_expiry_tracker'))
+
+@app.route('/product/get/<product_id>')
+@login_required
+def get_product(product_id):
+    product = product_manager.get_product(product_id)
+    if product and product.owner == session['username']:
+        return jsonify(product.to_dict())
+    return jsonify({'error': 'Product not found'}), 404
 
 if __name__ == '__main__':
     init_admin()
