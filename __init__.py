@@ -416,6 +416,39 @@ def get_product(product_id):
         return jsonify(product.to_dict())
     return jsonify({'error': 'Product not found'}), 404
 
+"""user settings"""
+@app.route('/user/settings')
+@login_required
+def user_settings():
+    user = user_manager.get_user(session['username'])
+    return render_template('user_settings.html', user=user)
+
+@app.route('/user/settings/update', methods=['POST'])
+@login_required
+def update_user_settings():
+    phone = request.form.get('phone')
+    
+    if not phone:
+        flash('Phone number is required', 'danger')
+        return redirect(url_for('user_settings'))
+    
+    if user_manager.update_user(session['username'], phone):
+        flash('Account information updated successfully', 'success')
+    else:
+        flash('Failed to update account information', 'danger')
+    return redirect(url_for('user_settings'))
+
+@app.route('/user/delete', methods=['POST'])
+@login_required
+def delete_user_account():
+    username = session['username']
+    if user_manager.delete_user(username):
+        session.clear()
+        flash('Your account has been deleted successfully', 'success')
+        return redirect(url_for('home'))
+    flash('Failed to delete account', 'danger')
+    return redirect(url_for('user_settings'))
+
 if __name__ == '__main__':
     init_admin()
     app.run(debug=True)
