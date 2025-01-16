@@ -44,7 +44,7 @@
 
 /* Hero Section */
 .hero {
-    background-image: url('placeholder-image.jpg');
+    background-image: url('/static/images/pexels-peterfazekas-1089455.jpg');
     /* Replace with your image */
     background-size: cover;
     background-position: center;
