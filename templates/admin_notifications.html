@@ -53,21 +53,21 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Notification</h5>
+                <h5 class="modal-title" style="color: black;">Add New Notification</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ url_for('add_notification') }}" method="POST">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="title" class="form-label">Title</label>
+                        <label for="title" class="form-label" style="color: black;">Title</label>
                         <input type="text" class="form-control" id="title" name="title" required>
                     </div>
                     <div class="mb-3">
-                        <label for="content" class="form-label">Content</label>
+                        <label for="content" class="form-label" style="color: black;">Content</label>
                         <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="target_role" class="form-label">Target Audience</label>
+                        <label for="target_role" class="form-label" style="color: black;">Target Audience</label>
                         <select class="form-select" id="target_role" name="target_role" required>
                             <option value="All">All Users</option>
                             <option value="Farmer">Farmers Only</option>
