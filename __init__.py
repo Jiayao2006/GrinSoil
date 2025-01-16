@@ -8,6 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+
 # Decorator for login required
 def login_required(f):
     @wraps(f)
@@ -215,6 +216,7 @@ def customer_dashboard():
     counts = product_manager.get_status_counts(session['username'])
     return render_template('customer_dashboard.html', user=user, product_counts=counts)
 
+"""admin routes"""
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
@@ -310,6 +312,27 @@ def view_user(username):
         return render_template('user_details.html', user=user)
     flash('User not found', 'danger')
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/reviews')
+@admin_required
+def admin_reviews():
+    """Admin route to view and manage all reviews"""
+    review_manager = ReviewManager()
+    all_reviews = review_manager.get_all_reviews()
+    # Sort reviews by created_at date, most recent first
+    sorted_reviews = sorted(all_reviews, key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"), reverse=True)
+    return render_template('admin_reviews.html', reviews=sorted_reviews)
+
+@app.route('/admin/review/delete/<review_id>')
+@admin_required
+def admin_delete_review(review_id):
+    """Admin route to delete a review"""
+    review_manager = ReviewManager()
+    if review_manager.delete_review(review_id):
+        flash('Review deleted successfully', 'success')
+    else:
+        flash('Failed to delete review', 'danger')
+    return redirect(url_for('admin_reviews'))
 
 """food expiry tracker"""
 product_manager = ProductManager()
