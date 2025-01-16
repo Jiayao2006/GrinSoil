@@ -410,3 +410,126 @@ class ReviewManager:
                 data['created_at'],
                 data['updated_at']
             )
+        
+class Notification:
+    def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, updated_at: str = None):
+        self.__id = id
+        self.__title = title
+        self.__content = content
+        self.__target_role = target_role  # 'Farmer', 'Customer', or 'All'
+        self.__created_at = created_at
+        self.__updated_at = updated_at
+
+    @property
+    def id(self) -> str:
+        return self.__id
+    
+    @property
+    def title(self) -> str:
+        return self.__title
+    
+    @property
+    def content(self) -> str:
+        return self.__content
+    
+    @property
+    def target_role(self) -> str:
+        return self.__target_role
+    
+    @property
+    def created_at(self) -> str:
+        return self.__created_at
+    
+    @property
+    def updated_at(self) -> str:
+        return self.__updated_at
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.__id,
+            'title': self.__title,
+            'content': self.__content,
+            'target_role': self.__target_role,
+            'created_at': self.__created_at,
+            'updated_at': self.__updated_at
+        }
+
+class NotificationManager:
+    def __init__(self):
+        self.__db_name = 'notifications_db'
+    
+    def __get_db(self):
+        return shelve.open(self.__db_name)
+    
+    def create_notification(self, title: str, content: str, target_role: str) -> str:
+        """Create a new notification"""
+        with self.__get_db() as db:
+            notification_id = str(datetime.now().timestamp())
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            notification = Notification(notification_id, title, content, target_role, created_at)
+            db[notification_id] = notification.to_dict()
+            return notification_id
+    
+    def get_all_notifications(self) -> List[Notification]:
+        """Get all notifications"""
+        with self.__get_db() as db:
+            return [Notification(
+                data['id'],
+                data['title'],
+                data['content'],
+                data['target_role'],
+                data['created_at'],
+                data['updated_at']
+            ) for data in db.values()]
+    
+    def get_notifications_for_role(self, role: str) -> List[Notification]:
+        """Get notifications for a specific role"""
+        with self.__get_db() as db:
+            return [Notification(
+                data['id'],
+                data['title'],
+                data['content'],
+                data['target_role'],
+                data['created_at'],
+                data['updated_at']
+            ) for data in db.values() if data['target_role'] in [role, 'All']]
+    
+    def update_notification(self, notification_id: str, title: str, content: str, target_role: str) -> bool:
+        """Update a notification"""
+        with self.__get_db() as db:
+            if notification_id not in db:
+                return False
+            notification_data = db[notification_id]
+            notification = Notification(
+                notification_id,
+                title,
+                content,
+                target_role,
+                notification_data['created_at'],
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            db[notification_id] = notification.to_dict()
+            return True
+    
+    def delete_notification(self, notification_id: str) -> bool:
+        """Delete a notification"""
+        with self.__get_db() as db:
+            if notification_id not in db:
+                return False
+            del db[notification_id]
+            return True
+    
+    def get_notification(self, notification_id: str) -> Optional[Notification]:
+        """Get a specific notification"""
+        with self.__get_db() as db:
+            if notification_id not in db:
+                return None
+            data = db[notification_id]
+            return Notification(
+                data['id'],
+                data['title'],
+                data['content'],
+                data['target_role'],
+                data['created_at'],
+                data['updated_at']
+            )

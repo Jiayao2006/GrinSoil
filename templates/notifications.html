@@ -1,0 +1,33 @@
+
+
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="card shadow" style="max-width: 1400px; margin: 2rem auto;">
+        <div class="card-header bg-info text-white">
+            <h2 class="mb-0">Important Updates</h2>
+        </div>
+        <div class="card-body p-4">
+            {% if notifications %}
+                {% for notification in notifications %}
+                <div class="alert alert-info mb-3">
+                    <h5 class="alert-heading">{{ notification.title }}</h5>
+                    <p>{{ notification.content }}</p>
+                    <hr>
+                    <small class="text-muted">Posted: {{ notification.created_at }}</small>
+                    {% if notification.updated_at %}
+                        <br>
+                        <small class="text-muted">Updated: {{ notification.updated_at }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">No notifications at this time.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
