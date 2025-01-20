@@ -9,9 +9,25 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="/services">Services</a></li>
                 <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
                 <li class="nav-item"><a class="nav-link" href="/contactus">Contact Us</a></li>
+                {% if session.get('username') %}
+                    <li class="nav-item">
+                        {% if session.get('role') == 'Farmer' %}
+                            <a class="nav-link" href="{{ url_for('farmer_dashboard') }}" title="Dashboard">
+                                Dashboard
+                            </a>
+                        {% elif session.get('role') == 'Customer' %}
+                            <a class="nav-link" href="{{ url_for('customer_dashboard') }}" title="Dashboard">
+                                Dashboard
+                            </a>
+                        {% elif session.get('role') == 'admin' %}
+                            <a class="nav-link" href="{{ url_for('admin_dashboard') }}" title="Dashboard">
+                                Dashboard
+                            </a>
+                        {% endif %}
+                    </li>
+                {% endif %}
             </ul>
             {% if session.get('username') %}
                 <div class="d-flex align-items-center">
@@ -24,3 +40,16 @@
         </div>
     </div>
 </nav>
+
+<!-- Add this CSS to your stylesheet -->
+<style>
+.fa-user-circle {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.nav-link:hover .fa-user-circle {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+</style>

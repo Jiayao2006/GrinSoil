@@ -412,13 +412,15 @@ class ReviewManager:
             )
         
 class Notification:
-    def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, updated_at: str = None):
+    def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, read_by: List[str] = None, updated_at: str = None):
         self.__id = id
         self.__title = title
         self.__content = content
-        self.__target_role = target_role  # 'Farmer', 'Customer', or 'All'
+        self.__target_role = target_role
         self.__created_at = created_at
         self.__updated_at = updated_at
+        self.__read_by = read_by or []
+
 
     @property
     def id(self) -> str:
@@ -453,6 +455,28 @@ class Notification:
             'created_at': self.__created_at,
             'updated_at': self.__updated_at
         }
+    @property
+    def read_by(self) -> List[str]:
+        return self.__read_by
+
+    def mark_as_read(self, username: str) -> None:
+        if username not in self.__read_by:
+            self.__read_by.append(username)
+
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.__id,
+            'title': self.__title,
+            'content': self.__content,
+            'target_role': self.__target_role,
+            'created_at': self.__created_at,
+            'updated_at': self.__updated_at,
+            'read_by': self.__read_by
+        }
+    
+    def is_read_by(self, username: str) -> bool:
+        return username in self.__read_by
+
 
 class NotificationManager:
     def __init__(self):
@@ -466,7 +490,7 @@ class NotificationManager:
         with self.__get_db() as db:
             notification_id = str(datetime.now().timestamp())
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            notification = Notification(notification_id, title, content, target_role, created_at)
+            notification = Notification(notification_id, title, content, target_role, created_at, read_by=[])
             db[notification_id] = notification.to_dict()
             return notification_id
     
@@ -479,7 +503,8 @@ class NotificationManager:
                 data['content'],
                 data['target_role'],
                 data['created_at'],
-                data['updated_at']
+                data.get('read_by', []),  # Use get() with default empty list
+                data.get('updated_at')    # Use get() for optional field
             ) for data in db.values()]
     
     def get_notifications_for_role(self, role: str) -> List[Notification]:
@@ -491,33 +516,50 @@ class NotificationManager:
                 data['content'],
                 data['target_role'],
                 data['created_at'],
-                data['updated_at']
+                data.get('read_by', []),  # Use get() with default empty list
+                data.get('updated_at')    # Use get() for optional field
             ) for data in db.values() if data['target_role'] in [role, 'All']]
     
-    def update_notification(self, notification_id: str, title: str, content: str, target_role: str) -> bool:
-        """Update a notification"""
+    def mark_notification_as_read(self, notification_id: str, username: str) -> bool:
+        """Mark a notification as read for a specific user"""
         with self.__get_db() as db:
             if notification_id not in db:
                 return False
+            
             notification_data = db[notification_id]
-            notification = Notification(
-                notification_id,
-                title,
-                content,
-                target_role,
-                notification_data['created_at'],
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            )
-            db[notification_id] = notification.to_dict()
+            read_by = notification_data.get('read_by', [])
+            
+            if username not in read_by:
+                read_by.append(username)
+                notification_data['read_by'] = read_by
+                db[notification_id] = notification_data
             return True
     
-    def delete_notification(self, notification_id: str) -> bool:
-        """Delete a notification"""
+    def mark_notification_as_unread(self, notification_id: str, username: str) -> bool:
+        """Mark a notification as unread for a specific user"""
         with self.__get_db() as db:
             if notification_id not in db:
                 return False
-            del db[notification_id]
+            
+            notification_data = db[notification_id]
+            read_by = notification_data.get('read_by', [])
+            
+            if username in read_by:
+                read_by.remove(username)
+                notification_data['read_by'] = read_by
+                db[notification_id] = notification_data
             return True
+    
+    def get_notification_counts(self, role: str, username: str) -> Dict[str, int]:
+        """Get counts of total and unread notifications for a user"""
+        notifications = self.get_notifications_for_role(role)
+        total_count = len(notifications)
+        unread_count = len([n for n in notifications if username not in n.read_by])
+        
+        return {
+            'total': total_count,
+            'unread': unread_count
+        }
     
     def get_notification(self, notification_id: str) -> Optional[Notification]:
         """Get a specific notification"""
@@ -531,5 +573,6 @@ class NotificationManager:
                 data['content'],
                 data['target_role'],
                 data['created_at'],
-                data['updated_at']
+                data.get('read_by', []),  # Use get() with default empty list
+                data.get('updated_at')    # Use get() for optional field
             )

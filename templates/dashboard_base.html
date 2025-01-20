@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - GrinSOIL Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="bg-light">
+    <!-- Sidebar -->
+    <div class="d-flex">
+        <div class="sidebar bg-dark text-light" style="width: 250px; min-height: 100vh; position: fixed;">
+            <div class="p-3 border-bottom">
+                <a href="{{ url_for('home') }}" class="text-decoration-none">
+                    <h4 class="text-light mb-0">GrinSOIL</h4>
+                </a>
+            </div>
+            <div class="p-3">
+                <div class="user-info mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar bg-success rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 40px; height: 40px;">
+                            {{ session.get('username', '')[0]|upper }}
+                        </div>
+                        <div class="ms-2">
+                            <div class="fw-bold">{{ session.get('username', '') }}</div>
+                            <small class="text-white bg-dark">{{ session.get('role', '') }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <ul class="nav flex-column">
+                    {% block sidebar_content %}
+                    <!-- Sidebar content will be different for farmer and customer -->
+                    {% endblock %}
+                    
+                    <!-- Common menu items -->
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="{{ url_for('notifications') }}">
+                            <i class="fas fa-bell me-2"></i> Notifications
+                            {% if notification_counts and notification_counts['unread'] > 0 %}
+                                <span class="badge bg-danger ms-2">{{ notification_counts['unread'] }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="{{ url_for('my_reviews') }}">
+                            <i class="fas fa-comments me-2"></i> My Reviews
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="{{ url_for('user_settings') }}">
+                            <i class="fas fa-cog me-2"></i> Settings
+                        </a>
+                    </li>
+                    <li class="nav-item mt-2">
+                        <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content" style="margin-left: 250px; width: calc(100% - 250px);">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="container-fluid px-4 mt-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Date Formatting Utility -->
+    <script>
+        function formatDate(date) {
+            const options = { 
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            };
+            return new Date().toLocaleDateString('en-US', options);
+        }
+
+        // Global date update function
+        function updateDateTime() {
+            const dateElement = document.getElementById('currentDate');
+            if (dateElement) {
+                dateElement.textContent = formatDate(new Date());
+            }
+        }
+
+        // Update date on load and every minute
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 60000); // Update every minute
+        });
+    </script>
+
+    <!-- Base Scripts Block -->
+    {% block scripts %}{% endblock %}
+    
+    <!-- Extra JS Block -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

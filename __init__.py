@@ -202,9 +202,19 @@ def farmer_dashboard():
     if session.get('role') != 'Farmer':
         flash('Access denied', 'danger')
         return redirect(url_for('signup_login'))
+    
     user = user_manager.get_user(session['username'])
     counts = product_manager.get_status_counts(session['username'])
-    return render_template('farmer_dashboard.html', user=user, product_counts=counts)
+    notification_counts = notification_manager.get_notification_counts('Farmer', session['username'])
+    # Get recent notifications
+    notifications = notification_manager.get_notifications_for_role('Farmer')[:5]  # Get last 5 notifications
+    
+    return render_template('farmer_dashboard.html', 
+                         user=user, 
+                         product_counts=counts,
+                         notification_counts=notification_counts,
+                         notifications=notifications)  # Pass notifications to template
+
 
 @app.route('/customer_dashboard')
 @login_required
@@ -212,9 +222,42 @@ def customer_dashboard():
     if session.get('role') != 'Customer':
         flash('Access denied', 'danger')
         return redirect(url_for('signup_login'))
+    
     user = user_manager.get_user(session['username'])
     counts = product_manager.get_status_counts(session['username'])
-    return render_template('customer_dashboard.html', user=user, product_counts=counts)
+    notification_counts = notification_manager.get_notification_counts('Customer', session['username'])
+    # Get recent notifications
+    notifications = notification_manager.get_notifications_for_role('Customer')[:5]  # Get last 5 notifications
+    
+    return render_template('customer_dashboard.html', 
+                         user=user, 
+                         product_counts=counts,
+                         notification_counts=notification_counts,
+                         notifications=notifications)  # Pass notifications to template
+
+@app.route('/notification/mark-read/<notification_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    success = notification_manager.mark_notification_as_read(notification_id, session['username'])
+    if success:
+        counts = notification_manager.get_notification_counts(session['role'], session['username'])
+        return jsonify({
+            'success': True,
+            'counts': counts
+        })
+    return jsonify({'success': False})
+
+@app.route('/notification/mark-unread/<notification_id>', methods=['POST'])
+@login_required
+def mark_notification_unread(notification_id):
+    success = notification_manager.mark_notification_as_unread(notification_id, session['username'])
+    if success:
+        counts = notification_manager.get_notification_counts(session['role'], session['username'])
+        return jsonify({
+            'success': True,
+            'counts': counts
+        })
+    return jsonify({'success': False})
 
 """admin routes"""
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -458,7 +501,12 @@ notification_manager = NotificationManager()
 def notifications():
     """View notifications relevant to user's role"""
     notifications = notification_manager.get_notifications_for_role(session['role'])
+    # Sort notifications by read status and then by date
+    notifications.sort(key=lambda x: (session['username'] in x.read_by, 
+                                    datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S")),
+                      reverse=True)
     return render_template('notifications.html', notifications=notifications)
+
 
 @app.route('/admin/notifications')
 @admin_required

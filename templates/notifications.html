@@ -1,33 +1,131 @@
-
-
 {% extends "base.html" %}
 
 {% block title %}Notifications{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4">
-    <div class="card shadow" style="max-width: 1400px; margin: 2rem auto;">
+    <div class="mb-3" style="max-width: 1400px; margin: 1rem auto;">
+        <a href="{{ url_for(session['role'].lower() + '_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card shadow" style="max-width: 1400px; margin: 1rem auto;">
         <div class="card-header bg-info text-white">
             <h2 class="mb-0">Important Updates</h2>
         </div>
         <div class="card-body p-4">
-            {% if notifications %}
+            <!-- Unread Notifications Section -->
+            <h4>Unread Notifications</h4>
+            <div id="unread-notifications">
                 {% for notification in notifications %}
-                <div class="alert alert-info mb-3">
-                    <h5 class="alert-heading">{{ notification.title }}</h5>
-                    <p>{{ notification.content }}</p>
-                    <hr>
-                    <small class="text-muted">Posted: {{ notification.created_at }}</small>
-                    {% if notification.updated_at %}
-                        <br>
-                        <small class="text-muted">Updated: {{ notification.updated_at }}</small>
-                    {% endif %}
+                {% if session['username'] not in notification.read_by %}
+                <div class="alert alert-info mb-3 notification-item" id="notification-{{ notification.id }}">
+                    <div class="d-flex align-items-start">
+                        <div class="form-check me-3">
+                            <input type="checkbox" class="form-check-input read-checkbox"
+                                data-notification-id="{{ notification.id }}" {% if session['username'] in
+                                notification.read_by %}checked{% endif %}>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading">{{ notification.title }}</h5>
+                            <p>{{ notification.content }}</p>
+                            <hr>
+                            <small class="text-muted">Posted: {{ notification.created_at }}</small>
+                            {% if notification.updated_at %}
+                            <br>
+                            <small class="text-muted">Updated: {{ notification.updated_at }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
+                {% endif %}
                 {% endfor %}
-            {% else %}
-                <p class="text-muted">No notifications at this time.</p>
-            {% endif %}
+            </div>
+
+            <!-- Read Notifications Section -->
+            <h4 class="mt-5">Read Notifications</h4>
+            <div id="read-notifications">
+                {% for notification in notifications %}
+                {% if session['username'] in notification.read_by %}
+                <div class="alert alert-secondary mb-3 notification-item" id="notification-{{ notification.id }}">
+                    <div class="d-flex align-items-start">
+                        <div class="form-check me-3">
+                            <input type="checkbox" class="form-check-input read-checkbox"
+                                data-notification-id="{{ notification.id }}" {% if session['username'] in
+                                notification.read_by %}checked{% endif %}>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading">{{ notification.title }}</h5>
+                            <p>{{ notification.content }}</p>
+                            <hr>
+                            <small class="text-muted">Posted: {{ notification.created_at }}</small>
+                            {% if notification.updated_at %}
+                            <br>
+                            <small class="text-muted">Updated: {{ notification.updated_at }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkboxes = document.querySelectorAll('.read-checkbox');
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function () {
+                const notificationId = this.dataset.notificationId;
+                const notificationElement = document.getElementById(`notification-${notificationId}`);
+                const endpoint = this.checked ? 'mark-read' : 'mark-unread';
+
+                fetch(`/notification/${endpoint}/${notificationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Move notification to appropriate section
+                            const targetSection = this.checked ?
+                                document.getElementById('read-notifications') :
+                                document.getElementById('unread-notifications');
+
+                            // Update notification style
+                            notificationElement.classList.toggle('alert-info', !this.checked);
+                            notificationElement.classList.toggle('alert-secondary', this.checked);
+
+                            // Move the notification
+                            targetSection.insertBefore(notificationElement, targetSection.firstChild);
+
+                            // Update counter in notifications page
+                            updateNotificationCounters(data.counts);
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
+    });
+
+    function updateNotificationCounters(counts) {
+        if (counts) {
+            const unreadBadge = document.querySelector('.badge.bg-danger');
+            const totalBadge = document.querySelector('.badge.bg-secondary');
+
+            if (unreadBadge) {
+                unreadBadge.textContent = `Unread: ${counts.unread}`;
+            }
+            if (totalBadge) {
+                totalBadge.textContent = `Total: ${counts.total}`;
+            }
+        }
+    }
+</script>
 {% endblock %}

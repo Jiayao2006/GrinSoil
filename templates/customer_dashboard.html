@@ -1,100 +1,205 @@
-<!-- customer_dashboard.html -->
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 
 {% block title %}Customer Dashboard{% endblock %}
 
-{% block content %}
-<div class="container-fluid px-4">
-    <div class="card shadow" style="max-width: 1400px; margin: 2rem auto;">
-        <div class="card-header bg-success text-white">
-            <h2 class="mb-0">Welcome, {{ user.username }}</h2>
-        </div>
-        <div class="card-body p-4">
-            <div class="mt-4">
-                <h4>Customer Dashboard</h4>
-                <hr>
-                <div class="row mt-3">
-                    <!-- Existing Available Products Card -->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 hover-shadow" style="cursor: pointer;" onclick="window.location.href='#'">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-store me-2"></i>
-                                    Available Products
-                                </h5>
-                                <p class="card-text">Browse agricultural products</p>
-                                <div class="text-muted">
-                                    <small>Click to view available products</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Fixed Food Expiry Tracker Card -->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 hover-shadow" style="cursor: pointer;" onclick="window.location.href='/customer/expiry-tracker'">
-                            <div class="card-body">
-                                <h5 class="card-title text-warning">
-                                    <i class="fas fa-clock me-2"></i>
-                                    Food Expiry Tracker
-                                </h5>
-                                <p class="card-text">Monitor and manage expiration dates of your products</p>
-                                <div class="text-muted">
-                                    <small>Track freshness and reduce waste</small>
-                                </div>
-                                <div class="mt-3">
-                                    <span class="badge bg-warning text-dark">Expiring Soon: {{ product_counts['expiring-soon'] }}</span>
-                                    <span class="badge bg-success ms-2">Fresh: {{ product_counts['fresh'] }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+{% block sidebar_content %}
+<li class="nav-item">
+    <a class="nav-link text-light active" href="{{ url_for('customer_dashboard') }}">
+        <i class="fas fa-home me-2"></i> Dashboard
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link text-light" href="#">
+        <i class="fas fa-shopping-basket me-2"></i> Browse Products
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link text-light" href="{{ url_for('customer_expiry_tracker') }}">
+        <i class="fas fa-clock me-2"></i> Expiry Tracker
+        {% if product_counts and product_counts['expiring-soon'] > 0 %}
+        <span class="badge bg-warning text-dark ms-2">{{ product_counts['expiring-soon'] }}</span>
+        {% endif %}
+    </a>
+</li>
+{% endblock %}
 
-                    <!--Reviews Section-->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 hover-shadow" style="cursor: pointer;" onclick="window.location.href='/my-reviews'">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="fas fa-comments me-2"></i>
-                                    Leave a Review
-                                </h5>
-                                <p class="card-text">Share your experience and read what others are saying</p>
-                                <div class="text-muted">
-                                    <small>Click to manage your reviews</small>
-                                </div>
-                            </div>
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Welcome Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Welcome back, {{ user.username }}</h2>
+            <p class="text-muted mb-0">Discover fresh local produce and manage your purchases</p>
+        </div>
+        <div class="text-muted">
+            <i class="fas fa-calendar-alt me-2"></i>
+            <span id="currentDate">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="row g-4 mb-5">
+        <!-- Fresh Products Card -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-success-subtle p-3 rounded">
+                            <i class="fas fa-leaf fa-2x text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Fresh Products</h6>
+                            <h3 class="mb-0">{{ product_counts['fresh'] }}</h3>
                         </div>
                     </div>
-                    <!-- User Settings Card -->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 hover-shadow" style="cursor: pointer;"
-                            onclick="window.location.href='/user/settings'">
-                            <div class="card-body">
-                                <h5 class="card-title text-secondary">
-                                    <i class="fas fa-cog me-2"></i>
-                                    User Settings
-                                </h5>
-                                <p class="card-text">Update your account information</p>
-                                <div class="text-muted">
-                                    <small>Manage your account settings</small>
-                                </div>
-                            </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiring Soon Card -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-warning-subtle p-3 rounded">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Expiring Soon</h6>
+                            <h3 class="mb-0">{{ product_counts['expiring-soon'] }}</h3>
                         </div>
                     </div>
-                    <!--Notifications-->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 hover-shadow" style="cursor: pointer;" onclick="window.location.href='/notifications'">
-                            <div class="card-body">
-                                <h5 class="card-title text-info">
-                                    <i class="fas fa-bell me-2"></i>
-                                    Important Updates
-                                </h5>
-                                <p class="card-text">View important announcements and updates</p>
-                                <div class="text-muted">
-                                    <small>Click to view all notifications</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Card -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-info-subtle p-3 rounded">
+                            <i class="fas fa-bell fa-2x text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">New Notifications</h6>
+                            <h3 class="mb-0">{{ notification_counts.unread if notification_counts and
+                                notification_counts.unread else 0 }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Reviews Card -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-primary-subtle p-3 rounded">
+                            <i class="fas fa-star fa-2x text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">My Reviews</h6>
+                            <h3 class="mb-0">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Sections -->
+    <div class="row g-4">
+        <!-- Recent Products Section -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recently Available Products</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Farmer</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-box-open fa-3x mb-3"></i>
+                                        <p class="mb-0">No products available at the moment</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions and Notifications -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-basket me-2"></i>Browse Products
+                        </a>
+                        <a href="{{ url_for('customer_expiry_tracker') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-clock me-2"></i>Check Expiry Dates
+                        </a>
+                        <a href="{{ url_for('my_reviews') }}" class="btn btn-outline-success">
+                            <i class="fas fa-star me-2"></i>Write a Review
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Notifications -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Notifications</h5>
+                    <a href="{{ url_for('notifications') }}" class="btn btn-sm btn-outline-info">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Recent Notifications Section -->
+                    <div class="list-group list-group-flush">
+                        {% if notifications %}
+                        {% for notification in notifications %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span
+                                        class="badge rounded-pill bg-{{ 'info' if session['username'] not in notification.read_by else 'secondary' }} p-2">
+                                        <i class="fas fa-bell"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">{{ notification.title }}</h6>
+                                    <p class="mb-0 small text-muted">{{ notification.content[:100] }}{% if
+                                        notification.content|length > 100 %}...{% endif %}</p>
+                                    <small class="text-muted">{{ notification.created_at }}</small>
                                 </div>
                             </div>
                         </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                            <p class="mb-0">No new notifications</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -102,11 +207,40 @@
     </div>
 </div>
 
+<!-- Additional Styles -->
+{% block extra_css %}
 <style>
-.hover-shadow:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-}
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-primary,
+    .btn-outline-warning,
+    .btn-outline-success {
+        border-width: 2px;
+    }
+
+    .list-group-item:hover {
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+
+    .badge {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 </style>
+{% endblock %}
+{% block extra_js %}
+<script>
+    // Set current date on load
+    document.getElementById('currentDate').textContent = formatDate(new Date());
+</script>
+{% endblock %}
 {% endblock %}
