@@ -76,56 +76,81 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const checkboxes = document.querySelectorAll('.read-checkbox');
+    const checkboxes = document.querySelectorAll('.read-checkbox');
 
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function () {
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', async function (event) {
+            try {
                 const notificationId = this.dataset.notificationId;
                 const notificationElement = document.getElementById(`notification-${notificationId}`);
                 const endpoint = this.checked ? 'mark-read' : 'mark-unread';
 
-                fetch(`/notification/${endpoint}/${notificationId}`, {
+                // Prevent default checkbox behavior until we know the server request succeeded
+                event.preventDefault();
+
+                const response = await fetch(`/notification/${endpoint}/${notificationId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Move notification to appropriate section
-                            const targetSection = this.checked ?
-                                document.getElementById('read-notifications') :
-                                document.getElementById('unread-notifications');
+                });
 
-                            // Update notification style
-                            notificationElement.classList.toggle('alert-info', !this.checked);
-                            notificationElement.classList.toggle('alert-secondary', this.checked);
+                const data = await response.json();
 
-                            // Move the notification
-                            targetSection.insertBefore(notificationElement, targetSection.firstChild);
+                if (data.success) {
+                    // Actually change the checkbox state
+                    this.checked = endpoint === 'mark-read';
+                    
+                    // Move notification to appropriate section
+                    const targetSection = this.checked ?
+                        document.getElementById('read-notifications') :
+                        document.getElementById('unread-notifications');
 
-                            // Update counter in notifications page
-                            updateNotificationCounters(data.counts);
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-            });
+                    // Update notification style
+                    notificationElement.classList.toggle('alert-info', !this.checked);
+                    notificationElement.classList.toggle('alert-secondary', this.checked);
+
+                    // Move the notification
+                    if (targetSection && notificationElement) {
+                        targetSection.insertBefore(notificationElement, targetSection.firstChild);
+                    }
+
+                    // Update counter in notifications page
+                    if (data.counts) {
+                        updateNotificationCounters(data.counts);
+                    }
+                } else {
+                    // Revert checkbox if request failed
+                    this.checked = !this.checked;
+                    console.error('Failed to update notification:', data.error);
+                    alert('Failed to update notification status. Please try again.');
+                }
+            } catch (error) {
+                // Revert checkbox if error occurred
+                this.checked = !this.checked;
+                console.error('Error updating notification:', error);
+                alert('An error occurred while updating the notification status. Please try again.');
+            }
         });
     });
+});
 
-    function updateNotificationCounters(counts) {
+function updateNotificationCounters(counts) {
+    try {
         if (counts) {
             const unreadBadge = document.querySelector('.badge.bg-danger');
             const totalBadge = document.querySelector('.badge.bg-secondary');
 
             if (unreadBadge) {
-                unreadBadge.textContent = `Unread: ${counts.unread}`;
+                unreadBadge.textContent = counts.unread || '0';
             }
             if (totalBadge) {
-                totalBadge.textContent = `Total: ${counts.total}`;
+                totalBadge.textContent = counts.total || '0';
             }
         }
+    } catch (error) {
+        console.error('Error updating notification counters:', error);
     }
+}
 </script>
 {% endblock %}

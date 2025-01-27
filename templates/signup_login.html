@@ -1,99 +1,260 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<style>
+    .email-requirements {
+        margin-top: 0.5rem;
+    }
+
+    .email-requirements div {
+        margin-bottom: 0.25rem;
+        transition: color 0.3s ease;
+    }
+
+    .email-requirements div.valid {
+        color: #198754;
+    }
+
+    .email-requirements div.invalid {
+        color: #dc3545;
+    }
+
+    .input-group-text .fas {
+        width: 16px;
+        text-align: center;
+    }
+
+    .tooltip {
+        position: absolute;
+        background-color: #333;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        z-index: 1000;
+    }
+
+    .tooltip::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 0 5px 5px 5px;
+        border-style: solid;
+        border-color: transparent transparent #333 transparent;
+    }
+    /* Add these new styles */
+    .input-group-text .fas {
+        width: 16px;
+        text-align: center;
+    }
+
+    .email-requirements div {
+        transition: color 0.3s ease;
+    }
+
+    .email-requirements div.valid {
+        color: #198754;
+    }
+
+    .email-requirements div.invalid {
+        color: #dc3545;
+    }
+
+    /* Add visual feedback for form validation */
+    .form-control.is-valid,
+    .form-control.is-invalid {
+        background-position: right calc(0.375em + 0.1875rem) center;
+    }
+
+    .input-group .form-control.is-valid,
+    .input-group .form-control.is-invalid {
+        z-index: 3;
+    }
+
+    .input-group-text .fas.fa-check {
+        color: #198754;
+    }
+
+    .input-group-text .fas.fa-times {
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-center mt-5">
     <div class="card shadow w-100" style="max-width: 1200px;">
         <div class="card-body px-5">
+            <!-- Tabs Navigation -->
             <ul class="nav nav-tabs" id="signupLoginTabs" role="tablist">
-                <!-- Signup Tab -->
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" type="button" role="tab" aria-controls="signup" aria-selected="true">
+                    <button class="nav-link active" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup"
+                        type="button" role="tab" aria-controls="signup" aria-selected="true">
                         Signup
                     </button>
                 </li>
-                <!-- Login Tab -->
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab" aria-controls="login" aria-selected="false">
+                    <button class="nav-link" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button"
+                        role="tab" aria-controls="login" aria-selected="false">
                         Login
                     </button>
                 </li>
             </ul>
+            <!-- Tabs Content -->
             <div class="tab-content" id="signupLoginContent">
                 <!-- Signup Form -->
                 <div class="tab-pane fade show active" id="signup" role="tabpanel" aria-labelledby="signup-tab">
-                    <form action="/signup" method="POST" class="mt-4">
-                        <!-- Username -->
+                    <form id="signupForm" action="/signup" method="POST" class="mt-4 needs-validation" novalidate>
+                        <!-- Username Field -->
                         <div class="mb-4 row align-items-center">
-                            <label for="signup-username" class="col-sm-3 col-form-label">Username:</label>
+                            <label for="signup-username" class="col-sm-3 col-form-label">Username: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <input type="text" class="form-control" id="signup-username" name="username" required>
+                                <div class="invalid-feedback">Username is required</div>
                             </div>
                         </div>
-                
-                        <!-- Password -->
+
+                        <!-- Password Field -->
                         <div class="mb-4 row align-items-center">
-                            <label for="signup-password" class="col-sm-3 col-form-label">Password:</label>
+                            <label for="signup-password" class="col-sm-3 col-form-label">Password: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="password" class="form-control" id="signup-password" name="password" required>
+                                <input type="password" class="form-control" id="signup-password" name="password"
+                                    required>
+                                <div class="invalid-feedback" id="password-feedback">Password is required</div>
+                                <div class="password-requirements small text-muted mt-1">
+                                    <div id="length-check">❌ Minimum 8 characters</div>
+                                    <div id="uppercase-check">❌ At least one uppercase letter</div>
+                                    <div id="number-check">❌ At least one number</div>
+                                    <div id="special-check">❌ At least one special character (!@#$%^&*)</div>
+                                </div>
                             </div>
                         </div>
-                
-                        <!-- Phone Number -->
+
+                        <!-- Phone Number with Country Code -->
                         <div class="mb-4 row align-items-center">
-                            <label for="signup-phone" class="col-sm-3 col-form-label">Phone Number:</label>
+                            <label for="phone-group" class="col-sm-3 col-form-label">Phone Number: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="tel" class="form-control" id="signup-phone" name="phone" required>
+                                <div class="input-group" id="phone-group">
+                                    <select class="form-select" style="max-width: 150px;" id="country-code"
+                                        name="country_code" required>
+                                        <option value="" selected disabled>Select Code</option>
+                                        <option value="+65">🇸🇬 +65</option>
+                                        <option value="+60">🇲🇾 +60</option>
+                                        <option value="+62">🇮🇩 +62</option>
+                                        <option value="+66">🇹🇭 +66</option>
+                                        <option value="+84">🇻🇳 +84</option>
+                                        <option value="+63">🇵🇭 +63</option>
+                                    </select>
+                                    <input type="tel" class="form-control" id="signup-phone" name="phone"
+                                        placeholder="Enter phone number" required>
+                                    <button class="btn btn-outline-primary" type="button" id="send-otp-btn" disabled>
+                                        Send OTP
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback" id="phone-feedback">Please enter a valid phone number
+                                </div>
+                                <div class="text-muted small mt-1" id="phone-format-hint"></div>
                             </div>
                         </div>
-                
+
+                        <!-- OTP Verification Section (Initially Hidden) -->
+                        <div class="mb-4 row align-items-center d-none" id="otp-section">
+                            <label for="otp-input" class="col-sm-3 col-form-label">Verify OTP: <span
+                                    class="text-danger">*</span></label>
+                            <div class="col-sm-9">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="otp-input" maxlength="6"
+                                        placeholder="Enter 6-digit OTP">
+                                    <button class="btn btn-outline-success" type="button"
+                                        id="verify-otp-btn">Verify</button>
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    <span id="otp-timer">OTP expires in: 03:00</span>
+                                    <a href="#" class="ms-2 d-none" id="resend-otp">Resend OTP</a>
+                                    <span class="text-muted d-none" id="resend-countdown"></span>
+                                </div>
+                                <div class="invalid-feedback">Invalid OTP</div>
+                                <div class="valid-feedback">Phone number verified successfully!</div>
+                            </div>
+                        </div>
+
+                        <!-- Email Field -->
+                        <div class="mb-4 row align-items-center">
+                            <label for="signup-email" class="col-sm-3 col-form-label">Email:</label>
+                            <div class="col-sm-9">
+                                <div class="input-group">
+                                    <input type="email" class="form-control" id="signup-email" name="email"
+                                        placeholder="Enter email address">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-check text-success d-none" id="email-valid-icon"></i>
+                                        <i class="fas fa-times text-danger d-none" id="email-invalid-icon"></i>
+                                    </span>
+                                </div>
+                                <div class="invalid-feedback">Please enter a valid email address</div>
+                                <div class="text-muted small">Optional</div>
+                                <div class="email-requirements small text-muted mt-1">
+                                    <div id="email-format-check">❔ Valid email format (e.g., user@domain.com)</div>
+                                    <div id="email-domain-check">❔ Valid domain extension (.com, .net, etc.)</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Role Selection -->
                         <div class="mb-4 row">
-                            <label class="col-sm-3 col-form-label">Register As:</label>
+                            <label class="col-sm-3 col-form-label">Register As: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="role" id="role-farmer" value="Farmer" required>
-                                    <label class="form-check-label" for="role-farmer">
-                                        Farmer
-                                    </label>
+                                    <input class="form-check-input" type="radio" name="role" id="role-farmer"
+                                        value="Farmer" required>
+                                    <label class="form-check-label" for="role-farmer">Farmer</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="role" id="role-customer" value="Customer" required>
-                                    <label class="form-check-label" for="role-customer">
-                                        Customer
-                                    </label>
+                                    <input class="form-check-input" type="radio" name="role" id="role-customer"
+                                        value="Customer" required>
+                                    <label class="form-check-label" for="role-customer">Customer</label>
                                 </div>
+                                <div class="invalid-feedback">Please select a role</div>
                             </div>
                         </div>
-                
+
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
-                
+                        <button type="submit" class="btn btn-primary w-100" id="signup-submit" disabled>
+                            Sign Up
+                        </button>
                         <!-- Login Link -->
                         <p class="mt-3 text-center">
-                            Already have an account? 
+                            Already have an account?
                             <a href="#" onclick="document.getElementById('login-tab').click()">Click here to Login</a>
                         </p>
                     </form>
                 </div>
-                
-                <!-- Login Form -->
+                <!-- Login Tab -->
                 <div class="tab-pane fade" id="login" role="tabpanel" aria-labelledby="login-tab">
                     <form action="/login" method="POST" class="mt-4">
                         <div class="mb-4 row align-items-center">
-                            <label for="login-username" class="col-sm-3 col-form-label">Username:</label>
+                            <label for="login-username" class="col-sm-3 col-form-label">Username: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <input type="text" class="form-control" id="login-username" name="username" required>
                             </div>
                         </div>
                         <div class="mb-4 row align-items-center">
-                            <label for="login-password" class="col-sm-3 col-form-label">Password:</label>
+                            <label for="login-password" class="col-sm-3 col-form-label">Password: <span
+                                    class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="password" class="form-control" id="login-password" name="password" required>
+                                <input type="password" class="form-control" id="login-password" name="password"
+                                    required>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success w-100">Log In</button>
                         <p class="mt-3 text-center">
-                            Don't have an account? 
+                            Don't have an account?
                             <a href="#" onclick="document.getElementById('signup-tab').click()">Click here to Signup</a>
                         </p>
                     </form>
@@ -101,5 +262,10 @@
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}
+
+    {% block extra_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="{{ url_for('static', filename='js/enhanced-validation.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/otp-validation.js') }}"></script>
+    {% endblock %}
