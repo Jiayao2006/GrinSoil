@@ -1,0 +1,276 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Edit Product{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Edit Product</h2>
+            <p class="text-muted mb-0">Update your product listing</p>
+        </div>
+        <a href="{{ url_for('my_listings') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to My Listings
+        </a>
+    </div>
+
+    <!-- Product Form Card -->
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form action="{{ url_for('update_listed_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data" class="row g-4">
+                <!-- Product Name -->
+                <div class="col-md-6">
+                    <label for="product-name" class="form-label">Product Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="product-name" name="name" required 
+                           value="{{ product.name }}">
+                </div>
+
+                <!-- Category -->
+                <div class="col-md-6">
+                    <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="vegetables" {% if product.category == 'vegetables' %}selected{% endif %}>Vegetables</option>
+                        <option value="fruits" {% if product.category == 'fruits' %}selected{% endif %}>Fruits</option>
+                        <option value="grains" {% if product.category == 'grains' %}selected{% endif %}>Grains</option>
+                        <option value="herbs" {% if product.category == 'herbs' %}selected{% endif %}>Herbs</option>
+                        <option value="others" {% if product.category == 'others' %}selected{% endif %}>Others</option>
+                    </select>
+                </div>
+
+                <!-- Price -->
+                <div class="col-md-6">
+                    <label for="price" class="form-label">Price (SGD) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required
+                               value="{{ product.price }}">
+                    </div>
+                </div>
+
+                <!-- Quantity -->
+                <div class="col-md-6">
+                    <label for="quantity" class="form-label">Quantity Available <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="quantity" name="quantity" min="0" required
+                               value="{{ product.quantity }}">
+                        <select class="form-select" id="unit" name="unit" required style="max-width: 120px;">
+                            <option value="kg" {% if product.unit == 'kg' %}selected{% endif %}>Kilograms</option>
+                            <option value="g" {% if product.unit == 'g' %}selected{% endif %}>Grams</option>
+                            <option value="pcs" {% if product.unit == 'pcs' %}selected{% endif %}>Pieces</option>
+                            <option value="bunch" {% if product.unit == 'bunch' %}selected{% endif %}>Bunches</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Harvest Date -->
+                <div class="col-md-6">
+                    <label for="harvest-date" class="form-label">Harvest Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="harvest-date" name="harvest_date" required
+                           value="{{ product.harvest_date }}">
+                </div>
+
+                <!-- Expiry Date -->
+                <div class="col-md-6">
+                    <label for="expiry-date" class="form-label">Best Before Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="expiry-date" name="expiry_date" required
+                           value="{{ product.expiry_date }}">
+                </div>
+
+                <!-- Product Description -->
+                <div class="col-12">
+                    <label for="description" class="form-label">Product Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="description" name="description" rows="4" required>{{ product.description }}</textarea>
+                </div>
+
+                <!-- Current Images -->
+                {% if product.images %}
+                <div class="col-12">
+                    <label class="form-label">Current Images</label>
+                    <div class="row g-2">
+                        {% for image in product.images %}
+                        <div class="col-auto">
+                            <div class="position-relative">
+                                <img src="{{ url_for('static', filename='product_images/' + image) }}" 
+                                     alt="Product image" class="img-thumbnail" style="height: 100px;">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Update Images -->
+                <div class="col-12">
+                    <label for="product-images" class="form-label">Update Images</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control" id="product-images" name="images[]" accept="image/*" multiple>
+                    </div>
+                    <div class="form-text">Upload new images to replace the current ones (Max 5MB each). Leave empty to keep current images.</div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="col-12">
+                    <label for="additional-info" class="form-label">Additional Information</label>
+                    <textarea class="form-control" id="additional-info" name="additional_info" rows="3">{{ product.additional_info }}</textarea>
+                </div>
+
+                <!-- Product Status -->
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Current Status: 
+                        {% if product.quantity == 0 %}
+                            <span class="badge bg-danger">Sold Out</span>
+                        {% elif product.listing_status == 'removed' %}
+                            <span class="badge bg-secondary">Removed</span>
+                        {% else %}
+                            <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash me-2"></i>Delete Product
+                    </button>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('my_listings') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success">Update Product</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this product? This action cannot be undone.</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Deleting this product will remove it permanently from your listings.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ url_for('delete_listed_product', product_id=product.id) }}" class="btn btn-danger">
+                    Delete Product
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_css %}
+<style>
+    .form-label {
+        font-weight: 500;
+    }
+    
+    .input-group-text {
+        background-color: #f8f9fa;
+    }
+    
+    textarea {
+        resize: vertical;
+    }
+    
+    /* Custom file input styling */
+    .form-control[type="file"] {
+        padding: 0.375rem 0.75rem;
+        line-height: 1.5;
+    }
+    
+    /* Image thumbnail hover effect */
+    .img-thumbnail {
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .img-thumbnail:hover {
+        transform: scale(1.05);
+    }
+    
+    /* Validation styling */
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set min date for harvest date to 30 days ago
+        const harvestDate = document.getElementById('harvest-date');
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        harvestDate.min = thirtyDaysAgo.toISOString().split('T')[0];
+        harvestDate.max = new Date().toISOString().split('T')[0];
+        
+        // Set min date for expiry date to today
+        const expiryDate = document.getElementById('expiry-date');
+        expiryDate.min = new Date().toISOString().split('T')[0];
+        
+        // Update expiry date min when harvest date changes
+        harvestDate.addEventListener('change', function() {
+            expiryDate.min = this.value;
+        });
+        
+        // File input validation
+        const fileInput = document.getElementById('product-images');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                const files = this.files;
+                let valid = true;
+                const maxFiles = 5;
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                
+                if (files.length > maxFiles) {
+                    alert(`Please select maximum ${maxFiles} files`);
+                    valid = false;
+                }
+                
+                for (let file of files) {
+                    if (file.size > maxSize) {
+                        alert(`File ${file.name} is larger than 5MB`);
+                        valid = false;
+                        break;
+                    }
+                    
+                    if (!file.type.startsWith('image/')) {
+                        alert(`File ${file.name} is not an image`);
+                        valid = false;
+                        break;
+                    }
+                }
+                
+                if (!valid) {
+                    this.value = '';
+                }
+            });
+        }
+
+        // Form validation
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

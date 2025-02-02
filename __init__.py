@@ -7,9 +7,18 @@ from datetime import datetime, timedelta
 import re
 import random
 import werkzeug.exceptions
+from werkzeug.utils import secure_filename
+import os
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+
+# configurations for file uploads
+UPLOAD_FOLDER = 'static/product_images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
 
 # Add this route to __init__.py for debugging
 @app.route('/debug/notifications')
@@ -50,27 +59,17 @@ def debug_notifications():
 # Add the error handler and initialization code here
 @app.errorhandler(Exception)
 def handle_error(error):
-    """Global error handler"""
-    print(f"Unhandled error: {str(error)}")
-    import traceback
-    traceback.print_exc()
-    
-    # Check if request is AJAX by checking the X-Requested-With header
-    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    
-    if is_xhr:
-        return jsonify({
-            'success': False,
-            'message': 'An unexpected error occurred'
-        }), 500
-        
-    # Ignore favicon.ico 404 errors
-    if isinstance(error, werkzeug.exceptions.NotFound) and request.path == '/favicon.ico':
-        return '', 204  # Return empty response with "No Content" status
-        
-    # Handle other errors
-    flash('An unexpected error occurred', 'danger')
-    return redirect(url_for('admin_dashboard'))
+    if request.path == '/favicon.ico':
+        return '', 204
+    return redirect(url_for('home'))
+
+# Add specific 404 handler
+@app.errorhandler(404)
+def page_not_found(e):
+    # Ignore favicon.ico requests
+    if request.path == '/favicon.ico':
+        return '', 204
+    return redirect(url_for('home'))
 
 def init_notification_db():
     """Initialize notification database"""
@@ -977,6 +976,301 @@ def delete_notification(notification_id):
         flash('An error occurred while deleting the notification', 'danger')
     
     return redirect(url_for('admin_notifications'))
+
+
+"""Product Listing"""
+"""Form submission for adding products"""
+@app.route('/farmer/list-product', methods=['GET'])
+@login_required
+def list_product():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    return render_template('list_product.html')
+
+listed_product_manager = ListedProductManager()
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Show product listing form
+@app.route('/farmer/list-product', methods=['GET'])
+@login_required
+def show_product_form():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    return render_template('list_product.html')
+
+# Handle product listing submission
+@app.route('/farmer/add-listing', methods=['POST'])
+@login_required
+def add_listing():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        # Get form data
+        name = request.form.get('name')
+        category = request.form.get('category')
+        price = float(request.form.get('price'))
+        quantity = int(request.form.get('quantity'))
+        unit = request.form.get('unit')
+        harvest_date = request.form.get('harvest_date')
+        expiry_date = request.form.get('expiry_date')
+        description = request.form.get('description')
+        additional_info = request.form.get('additional_info')
+        
+        # Handle image uploads
+        uploaded_images = []
+        if 'images[]' in request.files:
+            files = request.files.getlist('images[]')
+            for file in files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Add timestamp to filename to make it unique
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_filename = f"{timestamp}_{filename}"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    
+                    # Create directory if it doesn't exist
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    
+                    file.save(filepath)
+                    uploaded_images.append(unique_filename)
+        
+        # Create product
+        product_id = listed_product_manager.create_product(
+            name=name,
+            category=category,
+            price=price,
+            quantity=quantity,
+            unit=unit,
+            harvest_date=harvest_date,
+            expiry_date=expiry_date,
+            description=description,
+            owner=session['username'],
+            additional_info=additional_info,
+            images=uploaded_images
+        )
+        
+        if product_id:
+            flash('Product listed successfully', 'success')
+        else:
+            flash('Failed to list product', 'danger')
+            
+        return redirect(url_for('farmer_dashboard'))
+        
+    except Exception as e:
+        print(f"Error in add_listing: {str(e)}")
+        flash('An error occurred while listing the product', 'danger')
+        return redirect(url_for('show_product_form'))
+
+# View farmer's listed products
+@app.route('/farmer/my-listings')
+@login_required
+def my_listings():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        products = listed_product_manager.get_farmer_products(session['username'])
+        return render_template('my_listings.html', products=products)
+    except Exception as e:
+        print(f"Error in my_listings: {str(e)}")
+        flash('Error loading your listings', 'danger')
+        return redirect(url_for('farmer_dashboard'))
+
+# Update product quantity
+@app.route('/farmer/update-quantity/<product_id>', methods=['POST'])
+@login_required
+def update_product_quantity(product_id):
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        new_quantity = int(request.form.get('quantity', 0))
+        if new_quantity < 0:
+            flash('Quantity cannot be negative', 'danger')
+            return redirect(url_for('my_listings'))
+            
+        if listed_product_manager.update_product_quantity(
+            product_id, session['username'], new_quantity
+        ):
+            flash('Quantity updated successfully', 'success')
+        else:
+            flash('Failed to update quantity', 'danger')
+            
+        return redirect(url_for('my_listings'))
+        
+    except ValueError:
+        flash('Invalid quantity value', 'danger')
+        return redirect(url_for('my_listings'))
+    except Exception as e:
+        print(f"Error updating quantity: {str(e)}")
+        flash('Error updating quantity', 'danger')
+        return redirect(url_for('my_listings'))
+
+# Product Listing Edit
+# Add these routes to __init__.py
+
+# configurations for file uploads
+UPLOAD_FOLDER = 'static/product_images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create ListedProductManager with upload folder
+listed_product_manager = ListedProductManager(UPLOAD_FOLDER)
+
+@app.route('/farmer/edit-listing/<product_id>')
+@login_required
+def edit_listed_product(product_id):
+    """Show edit form for a listed product"""
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        product = listed_product_manager.get_product(product_id, session['username'])
+        if not product:
+            flash('Product not found', 'danger')
+            return redirect(url_for('my_listings'))
+            
+        return render_template('edit_product.html', product=product)
+        
+    except Exception as e:
+        print(f"Error in edit_listed_product: {str(e)}")
+        flash('Error loading product', 'danger')
+        return redirect(url_for('my_listings'))
+
+@app.route('/farmer/update-listing/<product_id>', methods=['POST'])
+@login_required
+def update_listed_product(product_id):
+    """Handle listed product update submission"""
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        # Get form data
+        name = request.form.get('name')
+        category = request.form.get('category')
+        price = float(request.form.get('price'))
+        quantity = int(request.form.get('quantity'))
+        unit = request.form.get('unit')
+        harvest_date = request.form.get('harvest_date')
+        expiry_date = request.form.get('expiry_date')
+        description = request.form.get('description')
+        additional_info = request.form.get('additional_info')
+
+        # Handle image upload if new images are provided
+        new_images = request.files.getlist('images[]')
+        if new_images and new_images[0].filename:
+            uploaded_images = []
+            for file in new_images:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Add timestamp to filename to make it unique
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_filename = f"{timestamp}_{filename}"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    
+                    # Create directory if it doesn't exist
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    
+                    file.save(filepath)
+                    uploaded_images.append(unique_filename)
+            
+            # Update the product with new images
+            if uploaded_images:
+                # TODO: Consider cleaning up old images here
+                pass
+        
+        # Update product
+        if listed_product_manager.update_product(
+            product_id=product_id,
+            owner=session['username'],
+            name=name,
+            category=category,
+            price=price,
+            quantity=quantity,
+            unit=unit,
+            harvest_date=harvest_date,
+            expiry_date=expiry_date,
+            description=description,
+            additional_info=additional_info
+        ):
+            flash('Product updated successfully', 'success')
+        else:
+            flash('Failed to update product', 'danger')
+            
+        return redirect(url_for('my_listings'))
+        
+    except Exception as e:
+        print(f"Error in update_listed_product: {str(e)}")
+        flash('An error occurred while updating the product', 'danger')
+        return redirect(url_for('my_listings'))
+
+@app.route('/farmer/delete-listing/<product_id>')
+@login_required
+def delete_listed_product(product_id):
+    """Delete a product listing"""
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        if listed_product_manager.delete_product(product_id, session['username']):
+            flash('Product deleted successfully', 'success')
+        else:
+            flash('Failed to delete product', 'danger')
+            
+        return redirect(url_for('my_listings'))
+        
+    except Exception as e:
+        print(f"Error in delete_listed_product: {str(e)}")
+        flash('An error occurred while deleting the product', 'danger')
+        return redirect(url_for('my_listings'))
+
+# Browse all listed products (for customers)
+@app.route('/browse-products')
+def browse_products():
+    try:
+        all_products = []
+        with listed_product_manager._ListedProductManager__get_db() as db:
+            if 'farmer_products' in db:
+                for farmer_products in db['farmer_products'].values():
+                    for product_data in farmer_products.values():
+                        if product_data.get('listing_status') == 'active':
+                            # Create ListedProduct object
+                            product = ListedProduct(
+                                id=product_data['id'],
+                                name=product_data['name'],
+                                expiry_date=product_data['expiry_date'],
+                                owner=product_data['owner'],
+                                category=product_data['category'],
+                                price=product_data['price'],
+                                quantity=product_data['quantity'],
+                                unit=product_data['unit'],
+                                harvest_date=product_data['harvest_date'],
+                                description=product_data['description'],
+                                additional_info=product_data.get('additional_info'),
+                                images=product_data.get('images', []),
+                                listing_status=product_data.get('listing_status', 'active')
+                            )
+                            all_products.append(product)
+                            
+        return render_template('browse_products.html', products=all_products)
+        
+    except Exception as e:
+        print(f"Error in browse_products: {str(e)}")
+        flash('Error loading products', 'danger')
+        return redirect(url_for('home'))
 
 if __name__ == '__main__':
     init_admin()

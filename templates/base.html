@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,32 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     {% block extra_css %}{% endblock %}
+    <style>
+        #flash-message-container .alert {
+            min-width: 300px;
+            max-width: 500px;
+            margin-bottom: 0.5rem;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .alert.fade {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -35,27 +61,30 @@
                 </ul>
                 <div class="d-flex">
                     {% if session.get('username') %}
-                        <div class="dropdown">
-                            <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                {{ session.get('username') }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <a class="dropdown-item" href="{{ url_for(session.get('role', '').lower() + '_dashboard') }}">
-                                        Dashboard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ url_for('user_settings') }}">Settings</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a>
-                                </li>
-                            </ul>
-                        </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            {{ session.get('username') }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item"
+                                    href="{{ url_for(session.get('role', '').lower() + '_dashboard') }}">
+                                    Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('user_settings') }}">Settings</a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a>
+                            </li>
+                        </ul>
+                    </div>
                     {% else %}
-                        <a href="{{ url_for('signup_login') }}" class="btn btn-success">Sign Up / Login</a>
+                    <a href="{{ url_for('signup_login') }}" class="btn btn-success">Sign Up / Login</a>
                     {% endif %}
                 </div>
             </div>
@@ -63,18 +92,19 @@
     </nav>
 
     <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=True) %}
+    <div id="flash-message-container" class="position-fixed top-0 start-50 translate-middle-x"
+        style="z-index: 1050; margin-top: 80px;">
+        {% with messages = get_flashed_messages(with_categories=True) %}
         {% if messages %}
-            <div class="container-fluid px-4 mt-3">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            </div>
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="handleAlertDismiss(this)"></button>
+        </div>
+        {% endfor %}
         {% endif %}
-    {% endwith %}
+        {% endwith %}
+    </div>
 
     <!-- Main Content -->
     <main>
@@ -105,5 +135,27 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
     {% block extra_js %}{% endblock %}
+
+    <script>
+        function handleAlertDismiss(button) {
+            const alertElement = button.closest('.alert');
+            alertElement.style.opacity = '0';
+            setTimeout(() => alertElement.remove(), 300);
+        }
+    
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    if (alert) {
+                        const closeButton = alert.querySelector('.btn-close');
+                        if (closeButton) closeButton.click();
+                    }
+                }, 5000);
+            });
+        });
+    </script>
 </body>
+
 </html>

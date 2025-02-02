@@ -1,46 +1,128 @@
 {% extends "base.html" %}
-
 {% block title %}About GrinSOIL{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <!-- About Section -->
-    <div class="row mb-5">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h1 class="card-title text-center mb-4">About GrinSOIL</h1>
-                    <p class="lead">
-                        GrinSOIL is dedicated to connecting farmers and customers while promoting sustainable agriculture
-                        and reducing food waste.
-                    </p>
-                    <!-- Add your about content here -->
+<!-- Hero Section -->
+<section class="bg-light py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">About GrinSOIL</h1>
+                <p class="lead mb-4">GrinSOIL is dedicated to revolutionizing the agricultural landscape by connecting farmers directly with consumers while promoting sustainable practices and reducing food waste.</p>
+                <p class="mb-4">Our platform empowers local farmers and conscious consumers to build a more sustainable and efficient food system for future generations.</p>
+            </div>
+            <div class="col-lg-6">
+                <img src="/api/placeholder/600/400" alt="Sustainable Farming" class="img-fluid rounded shadow-sm">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Core Features -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Our Core Features</h2>
+        <div class="row g-4">
+            <!-- Expiry Tracking -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-clock text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">Expiry Tracking</h3>
+                        </div>
+                        <p class="text-muted mb-0">Smart tracking system for product freshness and expiry dates, helping reduce food waste and ensure quality.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Product Listing -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-store text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">Product Listing</h3>
+                        </div>
+                        <p class="text-muted mb-0">Easy-to-use platform for farmers to list their products with detailed information and images.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Dashboard -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-tachometer-alt text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">User Dashboard</h3>
+                        </div>
+                        <p class="text-muted mb-0">Personalized dashboards for both farmers and customers to manage their activities and track interactions.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notifications -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-bell text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">Smart Notifications</h3>
+                        </div>
+                        <p class="text-muted mb-0">Real-time notifications for product updates, expiry alerts, and important announcements.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Review System -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-star text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">Review System</h3>
+                        </div>
+                        <p class="text-muted mb-0">Transparent review system allowing customers to share their experiences and build trust.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Secure Platform -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-shield-alt text-success fa-2x me-3"></i>
+                            <h3 class="h5 mb-0">Secure Platform</h3>
+                        </div>
+                        <p class="text-muted mb-0">Enhanced security measures including OTP verification and secure user authentication.</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</section>
 
-    <!-- Public Reviews Section -->
-    <div class="row mt-5">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h2 class="card-title mb-0">What Our Community Says</h2>
-                </div>
-                <div class="card-body">
-                    {% if reviews %}
-                        {% for review in reviews %}
-                        <div class="review-card mb-4">
-                            <div class="d-flex align-items-start">
-                                <div class="review-avatar me-3">
-                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
-                                         style="width: 40px; height: 40px;">
+<!-- Community Reviews -->
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">What Our Community Says</h2>
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                {% if reviews %}
+                    {% for review in reviews %}
+                    <div class="card mb-4 border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
                                         {{ review.author[0]|upper }}
                                     </div>
                                 </div>
-                                <div class="review-content flex-grow-1">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">{{ review.author }}</h6>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h5 class="mb-0">{{ review.author }}</h5>
                                         <small class="text-muted">
                                             {{ review.created_at }}
                                             {% if review.updated_at %}
@@ -52,33 +134,32 @@
                                 </div>
                             </div>
                         </div>
-                        {% if not loop.last %}
-                            <hr class="my-4">
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-comments text-muted fa-3x mb-3"></i>
+                        <p class="lead text-muted mb-4">No reviews yet. Be the first to share your experience!</p>
+                        {% if not session.get('username') %}
+                            <a href="{{ url_for('signup_login') }}" class="btn btn-success btn-lg px-4">Sign Up to Leave a Review</a>
                         {% endif %}
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-4">
-                            <p class="text-muted mb-0">No reviews yet. Be the first to share your experience!</p>
-                            {% if not session.get('username') %}
-                                <a href="{{ url_for('signup_login') }}" class="btn btn-primary mt-3">Sign Up to Leave a Review</a>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<style>
-    .review-card {
-        transition: transform 0.2s;
-    }
-    .review-card:hover {
-        transform: translateX(5px);
-    }
-    .review-avatar {
-        flex-shrink: 0;
-    }
-</style>
+<!-- Join Us CTA -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h2 class="mb-4">Join Our Growing Community</h2>
+                <p class="lead mb-4">Whether you're a farmer looking to reach more customers or a consumer seeking fresh, local produce, GrinSOIL is here to help.</p>
+                <a href="{{ url_for('signup_login') }}" class="btn btn-success btn-lg px-5">Get Started Today</a>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}

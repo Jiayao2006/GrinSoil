@@ -1,7 +1,113 @@
 {% extends "base.html" %}
 {% block title %}Home - GrinSOIL{% endblock %}
+
 {% block content %}
-<h1 class="display-4">Small Farms. Big Ideas.</h1>
-<p class="lead">Connecting farms and consumers for a sustainable future.</p>
-<a href="#about" class="btn btn-success btn-lg">Learn More</a>
+<!-- Hero Section -->
+<section class="hero-section position-relative vh-100 d-flex align-items-center" style="background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.3)), url('../static/images/WhatsApp\ Image\ 2025-01-20\ at\ 17.31.57_3baa667f.jpg') no-repeat center center; background-size: cover;">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <h1 class="display-3 text-white fw-bold mb-4">Small Farms. Big Ideas.</h1>
+                <p class="lead text-white mb-4">Revolutionizing the way farmers connect with consumers. Join us in creating a sustainable future for local agriculture.</p>
+                <div class="d-flex gap-3">
+                    <a href="{{ url_for('signup_login') }}" class="btn btn-success btn-lg px-4">Get Started</a>
+                    <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg px-4">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-seedling text-success fa-3x mb-3"></i>
+                        <h3 class="h4 mb-3">Fresh & Local</h3>
+                        <p class="text-muted mb-0">Connect directly with local farmers for the freshest produce available.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-leaf text-success fa-3x mb-3"></i>
+                        <h3 class="h4 mb-3">Sustainable</h3>
+                        <p class="text-muted mb-0">Support sustainable farming practices and reduce food waste.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-users text-success fa-3x mb-3"></i>
+                        <h3 class="h4 mb-3">Community</h3>
+                        <p class="text-muted mb-0">Join a growing community of farmers and conscious consumers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">How It Works</h2>
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-user-plus fa-2x"></i>
+                    </div>
+                    <h4 class="h5">Sign Up</h4>
+                    <p class="text-muted">Create your account as a farmer or customer</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-store fa-2x"></i>
+                    </div>
+                    <h4 class="h5">List Products</h4>
+                    <p class="text-muted">Farmers can list their fresh produce</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-shopping-basket fa-2x"></i>
+                    </div>
+                    <h4 class="h5">Connect</h4>
+                    <p class="text-muted">Browse and connect with local farmers</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-heart fa-2x"></i>
+                    </div>
+                    <h4 class="h5">Enjoy</h4>
+                    <p class="text-muted">Get fresh, local produce while supporting farmers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h2 class="mb-4">Ready to Get Started?</h2>
+                <p class="lead mb-4">Join our community today and be part of the sustainable agriculture movement.</p>
+                <a href="{{ url_for('signup_login') }}" class="btn btn-success btn-lg px-5">Sign Up Now</a>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}

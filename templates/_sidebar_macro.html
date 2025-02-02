@@ -1,0 +1,76 @@
+{# _sidebar_macro.html - Create this as a new file #}
+{% macro sidebar_content() %}
+    {% if session.get('role') == 'Farmer' %}
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'farmer_dashboard' %}active{% endif %}" 
+               href="{{ url_for('farmer_dashboard') }}">
+                <i class="fas fa-home me-2"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint in ['my_listings', 'list_product'] %}active{% endif %}" 
+               href="{{ url_for('my_listings') }}">
+                <i class="fas fa-box me-2"></i> My Products
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'farmer_expiry_tracker' %}active{% endif %}" 
+               href="{{ url_for('farmer_expiry_tracker') }}">
+                <i class="fas fa-clock me-2"></i> Expiry Tracker
+                {% if product_counts and product_counts['expiring-soon'] > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ product_counts['expiring-soon'] }}</span>
+                {% endif %}
+            </a>
+        </li>
+    {% else %}
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'customer_dashboard' %}active{% endif %}" 
+               href="{{ url_for('customer_dashboard') }}">
+                <i class="fas fa-home me-2"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'browse_products' %}active{% endif %}" 
+               href="{{ url_for('browse_products') }}">
+                <i class="fas fa-shopping-basket me-2"></i> Browse Products
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'customer_expiry_tracker' %}active{% endif %}" 
+               href="{{ url_for('customer_expiry_tracker') }}">
+                <i class="fas fa-clock me-2"></i> Expiry Tracker
+                {% if product_counts and product_counts['expiring-soon'] > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ product_counts['expiring-soon'] }}</span>
+                {% endif %}
+            </a>
+        </li>
+    {% endif %}
+
+    <!-- Common menu items -->
+    <li class="nav-item">
+        <a class="nav-link text-light {% if request.endpoint == 'notifications' %}active{% endif %}" 
+           href="{{ url_for('notifications') }}">
+            <i class="fas fa-bell me-2"></i> Notifications
+            {% if notification_counts and notification_counts['unread'] > 0 %}
+                <span class="badge bg-danger">{{ notification_counts['unread'] }}</span>
+            {% endif %}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-light {% if request.endpoint == 'my_reviews' %}active{% endif %}" 
+           href="{{ url_for('my_reviews') }}">
+            <i class="fas fa-comments me-2"></i> My Reviews
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-light {% if request.endpoint == 'user_settings' %}active{% endif %}" 
+           href="{{ url_for('user_settings') }}">
+            <i class="fas fa-cog me-2"></i> Settings
+        </a>
+    </li>
+    <li class="nav-item mt-2">
+        <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+            <i class="fas fa-sign-out-alt me-2"></i> Logout
+        </a>
+    </li>
+{% endmacro %}

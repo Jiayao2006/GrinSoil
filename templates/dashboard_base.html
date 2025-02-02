@@ -1,3 +1,4 @@
+{% from "_sidebar_macro.html" import sidebar_content %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,30 +20,33 @@
             overflow-x: hidden;
             min-height: 100vh;
             background-color: #f8f9fa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
         /* Sidebar Styles */
         #sidebar-wrapper {
             min-height: 100vh;
-            width: 250px;
+            width: 280px;
             position: fixed;
             top: 0;
             left: 0;
             z-index: 1040;
-            background-color: #212529;
-            transition: transform 0.3s ease-in-out;
+            background-color: #1a1c23;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 4px 0 10px -5px rgba(0, 0, 0, 0.1);
         }
 
         #sidebar-wrapper.collapsed {
-            transform: translateX(-250px);
+            transform: translateX(-280px);
         }
 
         /* Main Content */
         .main-content {
-            margin-left: 250px;
+            margin-left: 280px;
             min-height: 100vh;
-            transition: margin 0.3s ease-in-out;
-            width: calc(100% - 250px);
+            transition: all 0.3s ease-in-out;
+            background-color: #f8f9fa;
+            width: calc(100% - 280px);
         }
 
         .main-content.expanded {
@@ -59,93 +63,41 @@
             left: 1rem;
             z-index: 1050;
             display: none;
-            color: #000;
             padding: 0.5rem;
-            border-radius: 4px;
+            border-radius: 0.375rem;
             transition: all 0.3s ease;
-        }
-
-        /* Hamburger Icon Animation */
-        .menu-toggle .bar-icon {
-            position: relative;
-            width: 24px;
-            height: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .menu-toggle .bar-icon::before,
-        .menu-toggle .bar-icon::after {
-            content: '';
-            position: absolute;
-            width: 24px;
-            height: 2px;
-            background-color: currentColor;
-            left: 0;
-            transition: all 0.3s ease;
-        }
-
-        .menu-toggle .bar-icon::before {
-            top: 7px;
-        }
-
-        .menu-toggle .bar-icon::after {
-            bottom: 7px;
-        }
-
-        .menu-toggle .bar-icon span {
-            position: absolute;
-            width: 24px;
-            height: 2px;
-            background-color: currentColor;
-            top: 50%;
-            left: 0;
-            transform: translateY(-50%);
-            transition: all 0.3s ease;
-        }
-
-        .menu-toggle.active .bar-icon span {
-            opacity: 0;
-        }
-
-        .menu-toggle.active .bar-icon::before {
-            top: 50%;
-            transform: translateY(-50%) rotate(45deg);
-        }
-
-        .menu-toggle.active .bar-icon::after {
-            bottom: 50%;
-            transform: translateY(50%) rotate(-45deg);
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            color: #1a1c23;
         }
 
         /* Navigation Styles */
         .nav-link {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.7);
             padding: 0.75rem 1rem;
-            margin-bottom: 0.25rem;
-            border-radius: 4px;
+            margin: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
             transition: all 0.3s ease;
+            font-size: 0.95rem;
         }
 
         .nav-link:hover {
-            color: #fff;
+            color: #ffffff;
             background-color: rgba(255, 255, 255, 0.1);
         }
 
         .nav-link.active {
-            color: #fff;
-            background-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            background-color: #28a745;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         /* Badge Styles */
-        .sidebar .nav-item .badge {
-            width: 24px;
-            height: 24px;
-            padding: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
+        .badge {
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
             font-weight: 600;
+            border-radius: 30px;
         }
 
         /* Overlay */
@@ -158,16 +110,48 @@
             bottom: 0;
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1030;
+            backdrop-filter: blur(2px);
         }
 
         .sidebar-overlay.show {
             display: block;
         }
 
+        /* User Info Styles */
+        .user-info {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            background-color: #28a745;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Brand Styles */
+        .brand-wrapper {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand-wrapper a {
+            text-decoration: none;
+        }
+
+        .brand-wrapper h4 {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             #sidebar-wrapper {
-                transform: translateX(-250px);
+                transform: translateX(-280px);
                 padding-top: 3.5rem;
             }
 
@@ -185,21 +169,38 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background-color: #f8f9fa;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
         }
 
-        /* User Info Styles */
-        .user-info {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        /* Card Styles */
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
 
-        .avatar {
-            width: 40px;
-            height: 40px;
-            font-weight: bold;
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -209,7 +210,7 @@
     <!-- Hamburger Menu Button -->
     <button class="menu-toggle" id="menu-toggle" aria-label="Toggle Menu">
         <div class="bar-icon">
-            <span></span>
+            <i class="fas fa-bars fa-lg"></i>
         </div>
     </button>
 
@@ -218,53 +219,30 @@
 
     <!-- Sidebar -->
     <div id="sidebar-wrapper">
-        <div class="p-3 border-bottom">
-            <a href="{{ url_for('home') }}" class="text-decoration-none">
+        <!-- Brand -->
+        <div class="brand-wrapper">
+            <a href="{{ url_for('home') }}" class="d-flex align-items-center">
                 <h4 class="text-light mb-0">GrinSOIL</h4>
             </a>
         </div>
-        <div class="p-3">
-            <!-- User Info -->
-            <div class="user-info mb-4">
-                <div class="d-flex align-items-center">
-                    <div class="avatar bg-success rounded-circle d-flex align-items-center justify-content-center">
-                        {{ session.get('username', '')[0]|upper }}
-                    </div>
-                    <div class="ms-2">
-                        <div class="fw-bold text-light">{{ session.get('username', '') }}</div>
-                        <small class="text-white-50">{{ session.get('role', '') }}</small>
-                    </div>
+
+        <!-- User Info -->
+        <div class="user-info">
+            <div class="d-flex align-items-center">
+                <div class="avatar rounded-circle d-flex align-items-center justify-content-center text-white">
+                    {{ session.get('username', '')[0]|upper }}
+                </div>
+                <div class="ms-3">
+                    <div class="fw-bold text-light">{{ session.get('username', '') }}</div>
+                    <small class="text-white-50">{{ session.get('role', '') }}</small>
                 </div>
             </div>
+        </div>
 
-            <!-- Navigation -->
+        <!-- Navigation -->
+        <div class="px-3">
             <ul class="nav flex-column">
-                {% block sidebar_content %}{% endblock %}
-
-                <!-- Common menu items -->
-                <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center justify-content-between" href="{{ url_for('notifications') }}">
-                        <span><i class="fas fa-bell me-2"></i> Notifications</span>
-                        {% if notification_counts and notification_counts['unread'] > 0 %}
-                            <span class="badge bg-danger">{{ notification_counts['unread'] }}</span>
-                        {% endif %}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('my_reviews') }}">
-                        <i class="fas fa-comments me-2"></i> My Reviews
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('user_settings') }}">
-                        <i class="fas fa-cog me-2"></i> Settings
-                    </a>
-                </li>
-                <li class="nav-item mt-2">
-                    <a class="nav-link text-danger" href="{{ url_for('logout') }}">
-                        <i class="fas fa-sign-out-alt me-2"></i> Logout
-                    </a>
-                </li>
+                {{ sidebar_content() }}
             </ul>
         </div>
     </div>
@@ -274,11 +252,11 @@
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=True) %}
             {% if messages %}
-                <div class="container-fluid mt-3">
+                <div class="container-fluid px-4 py-3">
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm">
                             {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endfor %}
                 </div>
@@ -304,6 +282,11 @@
                 sidebar.classList.toggle('show');
                 overlay.classList.toggle('show');
                 menuToggle.classList.toggle('active');
+                
+                // Update ARIA attributes
+                const isExpanded = sidebar.classList.contains('show');
+                menuToggle.setAttribute('aria-expanded', isExpanded);
+                sidebar.setAttribute('aria-hidden', !isExpanded);
             }
 
             menuToggle.addEventListener('click', function(e) {
@@ -329,6 +312,13 @@
                     sidebar.classList.remove('show');
                     overlay.classList.remove('show');
                     menuToggle.classList.remove('active');
+                }
+            });
+
+            // Handle escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                    toggleSidebar();
                 }
             });
         });

@@ -8,9 +8,6 @@
         <div class="card-header {% if user_role == 'Farmer' %}bg-primary{% else %}bg-success{% endif %} text-white">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <a href="{{ url_for(user_role.lower() + '_dashboard') }}" class="btn btn-light me-3">
-                        <i class="fas fa-arrow-left"></i> Back
-                    </a>
                     <h2 class="mb-0">Food Expiry Tracker</h2>
                 </div>
                 <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addProductModal">

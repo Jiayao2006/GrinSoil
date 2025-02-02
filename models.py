@@ -3,6 +3,9 @@ from typing import Dict, List, Optional
 import shelve
 import bcrypt
 from datetime import datetime, timedelta
+from dataclasses import dataclass
+import os
+from werkzeug.utils import secure_filename
 
 class User:
     def __init__(self, username: str, password: str, phone: str, role: str, email: str = None):
@@ -758,3 +761,457 @@ class NotificationManager:
         except Exception as e:
             print(f"Error getting notification: {str(e)}")
             return None
+        
+class ListedProduct(Product):
+    def __init__(self, id: str, name: str, expiry_date: str, owner: str,
+                 category: str, price: float, quantity: int, unit: str, 
+                 harvest_date: str, description: str, additional_info: str = None, 
+                 images: List[str] = None, listing_status: str = "active"):
+        # Call parent class constructor
+        super().__init__(id, name, expiry_date, 'fresh', owner)
+        
+        # Add additional attributes specific to listed products
+        self.__category = category
+        self.__price = price
+        self.__quantity = quantity
+        self.__unit = unit
+        self.__harvest_date = harvest_date
+        self.__description = description
+        self.__additional_info = additional_info
+        self.__images = images if images else []
+        self.__listing_status = listing_status  # active, sold_out, removed
+        self.__created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.__updated_at = None
+
+    # Additional getters for new attributes
+    @property
+    def category(self) -> str:
+        return self.__category
+    
+    @property
+    def price(self) -> float:
+        return self.__price
+    
+    @property
+    def quantity(self) -> int:
+        return self.__quantity
+    
+    @property
+    def unit(self) -> str:
+        return self.__unit
+    
+    @property
+    def harvest_date(self) -> str:
+        return self.__harvest_date
+    
+    @property
+    def description(self) -> str:
+        return self.__description
+    
+    @property
+    def additional_info(self) -> str:
+        return self.__additional_info
+    
+    @property
+    def images(self) -> List[str]:
+        return self.__images
+    
+    @property
+    def listing_status(self) -> str:
+        return self.__listing_status
+    
+    @property
+    def created_at(self) -> str:
+        return self.__created_at
+    
+    @property
+    def updated_at(self) -> str:
+        return self.__updated_at
+
+    # Setters
+    @quantity.setter
+    def quantity(self, new_quantity: int) -> None:
+        if new_quantity < 0:
+            raise ValueError("Quantity cannot be negative")
+        self.__quantity = new_quantity
+        self.__updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if new_quantity == 0:
+            self.__listing_status = "sold_out"
+
+    @listing_status.setter
+    def listing_status(self, new_status: str) -> None:
+        if new_status not in ['active', 'sold_out', 'removed']:
+            raise ValueError("Invalid listing status")
+        self.__listing_status = new_status
+        self.__updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def to_dict(self) -> Dict:
+        # Get base product dictionary from parent class
+        base_dict = super().to_dict()
+        # Add listed product specific fields
+        listing_dict = {
+            'category': self.__category,
+            'price': self.__price,
+            'quantity': self.__quantity,
+            'unit': self.__unit,
+            'harvest_date': self.__harvest_date,
+            'description': self.__description,
+            'additional_info': self.__additional_info,
+            'images': self.__images,
+            'listing_status': self.__listing_status,
+            'created_at': self.__created_at,
+            'updated_at': self.__updated_at
+        }
+        # Merge the dictionaries
+        return {**base_dict, **listing_dict}
+
+class ListedProductManager:
+    def __init__(self, upload_folder: str = 'static/product_images'):
+        self.__db_name = 'listed_products_db'
+        self.__upload_folder = upload_folder
+        self.__file_manager = FileTransactionManager(upload_folder)
+
+    def update_product(self, product_id: str, owner: str, name: str, category: str, 
+                      price: float, quantity: int, unit: str, harvest_date: str,
+                      expiry_date: str, description: str, additional_info: str = None, 
+                      new_images: List = None) -> bool:
+        """Update product with transactional file handling"""
+        try:
+            with self.__get_db() as db:
+                if ('farmer_products' not in db or 
+                    owner not in db['farmer_products'] or 
+                    product_id not in db['farmer_products'][owner]):
+                    return False
+                
+                # Get existing product data
+                existing_data = db['farmer_products'][owner][product_id]
+                existing_images = existing_data.get('images', [])
+                
+                # Handle new images if provided
+                image_filenames = []
+                if new_images and any(file.filename for file in new_images):
+                    # Queue deletion of existing images
+                    for old_image in existing_images:
+                        self.__file_manager.delete_file(old_image)
+                    
+                    # Queue creation of new images
+                    for file in new_images:
+                        filename = self.__file_manager.add_file(file)
+                        if filename:
+                            image_filenames.append(filename)
+                else:
+                    image_filenames = existing_images
+                
+                # Create updated product
+                product = ListedProduct(
+                    id=product_id,
+                    name=name,
+                    expiry_date=expiry_date,
+                    owner=owner,
+                    category=category,
+                    price=price,
+                    quantity=quantity,
+                    unit=unit,
+                    harvest_date=harvest_date,
+                    description=description,
+                    additional_info=additional_info,
+                    images=image_filenames,
+                    listing_status='active' if quantity > 0 else 'sold_out'
+                )
+                
+                # Update database
+                db['farmer_products'][owner][product_id] = product.to_dict()
+                
+                # Commit file operations
+                if not self.__file_manager.commit():
+                    # Restore original data if file operations fail
+                    db['farmer_products'][owner][product_id] = existing_data
+                    return False
+                
+                return True
+                
+        except Exception as e:
+            print(f"Error updating product: {str(e)}")
+            self.__file_manager.rollback()
+            return False
+    
+    def __get_db(self):
+        return shelve.open(self.__db_name, writeback=True)
+    
+    def create_product(self, name: str, category: str, price: float, quantity: int,
+                  unit: str, harvest_date: str, expiry_date: str, description: str,
+                  owner: str, additional_info: str = None, images: List = None) -> str:
+        """Create a new listed product with transactional file handling"""
+        try:
+            # Process images first
+            image_filenames = []
+            if images:
+                for file in images:
+                    if file:  # Check if file exists
+                        filename = self.__file_manager.add_file(file)
+                        if filename:
+                            image_filenames.append(filename)
+            
+            # Create product in database
+            with self.__get_db() as db:
+                product_id = str(datetime.now().timestamp())
+                
+                if 'farmer_products' not in db:
+                    db['farmer_products'] = {}
+                if owner not in db['farmer_products']:
+                    db['farmer_products'][owner] = {}
+                
+                # Create product
+                product = ListedProduct(
+                    id=product_id,
+                    name=name,
+                    expiry_date=expiry_date,
+                    owner=owner,
+                    category=category,
+                    price=price,
+                    quantity=quantity,
+                    unit=unit,
+                    harvest_date=harvest_date,
+                    description=description,
+                    additional_info=additional_info,
+                    images=image_filenames
+                )
+                
+                # Store in database
+                db['farmer_products'][owner][product_id] = product.to_dict()
+                
+                # Commit file operations
+                if not self.__file_manager.commit():
+                    # If file operations failed, remove product from database
+                    del db['farmer_products'][owner][product_id]
+                    if not db['farmer_products'][owner]:
+                        del db['farmer_products'][owner]
+                    return None
+                
+                return product_id
+                
+        except Exception as e:
+            print(f"Error in create_product: {str(e)}")
+            self.__file_manager.rollback()
+            return None
+        
+    def delete_product(self, product_id: str, owner: str) -> bool:
+        """Delete product with transactional file handling"""
+        try:
+            with self.__get_db() as db:
+                if ('farmer_products' not in db or 
+                    owner not in db['farmer_products'] or 
+                    product_id not in db['farmer_products'][owner]):
+                    return False
+                
+                # Get product data
+                product_data = db['farmer_products'][owner][product_id]
+                
+                # Queue file deletions
+                for filename in product_data.get('images', []):
+                    self.__file_manager.delete_file(filename)
+                
+                # Delete from database
+                del db['farmer_products'][owner][product_id]
+                if not db['farmer_products'][owner]:
+                    del db['farmer_products'][owner]
+                
+                # Commit file operations
+                if not self.__file_manager.commit():
+                    # Restore product data if file operations fail
+                    db['farmer_products'][owner][product_id] = product_data
+                    return False
+                
+                return True
+                
+        except Exception as e:
+            print(f"Error deleting product: {str(e)}")
+            self.__file_manager.rollback()
+            return False
+
+    def get_product(self, product_id: str, owner: str) -> Optional[ListedProduct]:
+        """Get a specific product"""
+        try:
+            with self.__get_db() as db:
+                if ('farmer_products' not in db or 
+                    owner not in db['farmer_products'] or 
+                    product_id not in db['farmer_products'][owner]):
+                    return None
+                
+                data = db['farmer_products'][owner][product_id]
+                return ListedProduct(
+                    id=data['id'],
+                    name=data['name'],
+                    expiry_date=data['expiry_date'],
+                    owner=data['owner'],
+                    category=data['category'],
+                    price=data['price'],
+                    quantity=data['quantity'],
+                    unit=data['unit'],
+                    harvest_date=data['harvest_date'],
+                    description=data['description'],
+                    additional_info=data.get('additional_info'),
+                    images=data.get('images', []),
+                    listing_status=data.get('listing_status', 'active')
+                )
+                
+        except Exception as e:
+            print(f"Error getting product: {str(e)}")
+            return None
+
+    def get_farmer_products(self, owner: str) -> List[ListedProduct]:
+        """Get all products listed by a specific farmer"""
+        try:
+            with self.__get_db() as db:
+                if 'farmer_products' not in db or owner not in db['farmer_products']:
+                    return []
+
+                products = []
+                for data in db['farmer_products'][owner].values():
+                    product = ListedProduct(
+                        id=data['id'],
+                        name=data['name'],
+                        expiry_date=data['expiry_date'],
+                        owner=data['owner'],
+                        category=data['category'],
+                        price=data['price'],
+                        quantity=data['quantity'],
+                        unit=data['unit'],
+                        harvest_date=data['harvest_date'],
+                        description=data['description'],
+                        additional_info=data.get('additional_info'),
+                        images=data.get('images', []),
+                        listing_status=data.get('listing_status', 'active')
+                    )
+                    products.append(product)
+                return products
+
+        except Exception as e:
+            print(f"Error getting farmer products: {str(e)}")
+            return []
+
+    def update_product_quantity(self, product_id: str, owner: str, 
+                              new_quantity: int) -> bool:
+        """Update product quantity"""
+        try:
+            with self.__get_db() as db:
+                if ('farmer_products' not in db or 
+                    owner not in db['farmer_products'] or 
+                    product_id not in db['farmer_products'][owner]):
+                    return False
+
+                data = db['farmer_products'][owner][product_id]
+                product = ListedProduct(
+                    id=data['id'],
+                    name=data['name'],
+                    expiry_date=data['expiry_date'],
+                    owner=data['owner'],
+                    category=data['category'],
+                    price=data['price'],
+                    quantity=new_quantity,  # Update quantity
+                    unit=data['unit'],
+                    harvest_date=data['harvest_date'],
+                    description=data['description'],
+                    additional_info=data.get('additional_info'),
+                    images=data.get('images', []),
+                    listing_status=data.get('listing_status', 'active')
+                )
+                
+                db['farmer_products'][owner][product_id] = product.to_dict()
+                return True
+
+        except Exception as e:
+            print(f"Error updating product quantity: {str(e)}")
+            return False
+        
+@dataclass
+class FileOperation:
+    """Represents a pending file operation"""
+    operation: str  # 'create' or 'delete'
+    temp_path: str  # Temporary file path
+    final_path: str  # Final file path
+    file_obj: Optional[object] = None  # Store the actual file object
+
+class FileTransactionManager:
+    def __init__(self, upload_folder: str):
+        self.upload_folder = upload_folder
+        self.temp_folder = os.path.join(upload_folder, 'temp')
+        self.operations: List[FileOperation] = []
+        
+        # Ensure folders exist
+        os.makedirs(self.upload_folder, exist_ok=True)
+        os.makedirs(self.temp_folder, exist_ok=True)
+    
+    def add_file(self, file) -> Optional[str]:
+        """Queue a file creation operation"""
+        try:
+            if hasattr(file, 'filename') and file.filename:  # For FileStorage objects
+                # Generate unique filename
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = secure_filename(file.filename)
+                unique_filename = f"{timestamp}_{filename}"
+                
+                # Set up paths
+                temp_path = os.path.join(self.temp_folder, unique_filename)
+                final_path = os.path.join(self.upload_folder, unique_filename)
+                
+                # Save to temp location
+                file.save(temp_path)
+                
+                # Add to pending operations
+                self.operations.append(
+                    FileOperation('create', temp_path, final_path, file)
+                )
+                
+                return unique_filename
+            else:  # For string filenames (existing files)
+                return file
+                
+        except Exception as e:
+            print(f"Error in add_file: {str(e)}")
+            return None
+    
+    def delete_file(self, filename: str):
+        """Queue a file deletion operation"""
+        if filename:
+            filepath = os.path.join(self.upload_folder, filename)
+            if os.path.exists(filepath):
+                self.operations.append(
+                    FileOperation('delete', filepath, filepath)
+                )
+    
+    def commit(self) -> bool:
+        """Execute all pending file operations"""
+        try:
+            # Process all operations
+            for op in self.operations:
+                if op.operation == 'create':
+                    # Only move file if it's a new file operation
+                    if os.path.exists(op.temp_path):
+                        os.rename(op.temp_path, op.final_path)
+                elif op.operation == 'delete':
+                    if os.path.exists(op.final_path):
+                        os.remove(op.final_path)
+            return True
+            
+        except Exception as e:
+            print(f"Error in commit: {str(e)}")
+            self.rollback()
+            return False
+            
+        finally:
+            self.operations.clear()
+    
+    def rollback(self):
+        """Rollback all pending operations"""
+        try:
+            for op in self.operations:
+                if op.operation == 'create':
+                    # Remove temp file if it exists
+                    if os.path.exists(op.temp_path):
+                        os.remove(op.temp_path)
+                # No need to handle delete rollback as files haven't been deleted yet
+        except Exception as e:
+            print(f"Error in rollback: {str(e)}")
+        finally:
+            self.operations.clear()
