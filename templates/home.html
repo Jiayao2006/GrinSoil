@@ -18,6 +18,27 @@
     </div>
 </section>
 
+<section class="py-5">
+    <div class="container">
+        <!-- Impact Statistics -->
+        <div class="row text-center mb-5">
+            <div class="col-md-4">
+                <div class="display-4 fw-bold text-success mb-2" data-count="1000">1,000+</div>
+                <p class="text-muted">Local Farmers Connected</p>
+            </div>
+            <div class="col-md-4">
+                <div class="display-4 fw-bold text-success mb-2" data-count="5000">5,000+</div>
+                <p class="text-muted">Happy Customers</p>
+            </div>
+            <div class="col-md-4">
+                <div class="display-4 fw-bold text-success mb-2">30%</div>
+                <p class="text-muted">Average Waste Reduction</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
 <!-- Features Section -->
 <section class="py-5">
     <div class="container">
@@ -46,6 +67,42 @@
                         <i class="fas fa-users text-success fa-3x mb-3"></i>
                         <h3 class="h4 mb-3">Community</h3>
                         <p class="text-muted mb-0">Join a growing community of farmers and conscious consumers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products Section (Before How It Works) -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Featured Products</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <img src="../static/images/vegetables.jpg" class="card-img-top" alt="Organic Vegetables">
+                    <div class="card-body">
+                        <h5 class="card-title">Fresh Organic Vegetables</h5>
+                        <p class="card-text">Locally grown, pesticide-free vegetables direct from our partner farms.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <img src="../static/images/fruits.jpg" class="card-img-top" alt="Seasonal Fruits">
+                    <div class="card-body">
+                        <h5 class="card-title">Seasonal Fruits</h5>
+                        <p class="card-text">Sweet and fresh fruits harvested at peak ripeness.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <img src="../static/images/herbs.jpg" class="card-img-top" alt="Organic Herbs">
+                    <div class="card-body">
+                        <h5 class="card-title">Fresh Herbs</h5>
+                        <p class="card-text">Aromatic herbs grown with care by local farmers.</p>
                     </div>
                 </div>
             </div>
@@ -98,6 +155,57 @@
     </div>
 </section>
 
+<!-- Testimonials Slider (Before CTA Section) -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">What Our Users Say</h2>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body text-center p-5">
+                                    <i class="fas fa-quote-left fa-3x text-success mb-4"></i>
+                                    <p class="lead mb-4">"GrinSOIL has transformed how I sell my produce. The platform's user-friendly interface and direct connection with customers has increased my sales significantly."</p>
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <div class="text-success">
+                                            <h5 class="mb-1">John Smith</h5>
+                                            <p class="mb-0 text-muted">Local Farmer</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body text-center p-5">
+                                    <i class="fas fa-quote-left fa-3x text-success mb-4"></i>
+                                    <p class="lead mb-4">"As a customer, I love knowing exactly where my food comes from. The quality of produce and the connection with local farmers is incredible."</p>
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <div class="text-success">
+                                            <h5 class="mb-1">Sarah Johnson</h5>
+                                            <p class="mb-0 text-muted">Regular Customer</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon bg-success rounded-circle" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon bg-success rounded-circle" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- CTA Section -->
 <section class="py-5">
     <div class="container">
@@ -110,4 +218,37 @@
         </div>
     </div>
 </section>
+
+<script>
+    // Animate statistics on scroll
+    document.addEventListener('DOMContentLoaded', function() {
+        const stats = document.querySelectorAll('[data-count]');
+        
+        function animateValue(element, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                element.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString() + '+';
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const element = entry.target;
+                    const end = parseInt(element.getAttribute('data-count'));
+                    animateValue(element, 0, end, 2000);
+                    observer.unobserve(element);
+                }
+            });
+        });
+
+        stats.forEach(stat => observer.observe(stat));
+    });
+</script>
 {% endblock %}
