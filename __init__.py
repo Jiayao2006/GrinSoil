@@ -18,8 +18,6 @@ UPLOAD_FOLDER = 'static/product_images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-
-
 # Add this route to __init__.py for debugging
 @app.route('/debug/notifications')
 def debug_notifications():
@@ -1271,6 +1269,182 @@ def browse_products():
         print(f"Error in browse_products: {str(e)}")
         flash('Error loading products', 'danger')
         return redirect(url_for('home'))
+    
+"""add to cart"""
+cart_manager = CartManager()
+
+@app.context_processor
+def inject_cart():
+    """Inject cart data into all templates"""
+    if 'username' in session:
+        cart = cart_manager.get_cart(session['username'])
+        return {'cart': cart}
+    return {'cart': None}
+
+@app.route('/shop')
+@login_required
+def shop():
+    """Show available products with search, sort, and filter options"""
+    """Show available products with search, sort, and filter options"""
+    try:
+        # Get query parameters
+        search = request.args.get('search', '').lower()
+        sort_by = request.args.get('sort', 'name')
+        sort_order = request.args.get('order', 'asc')
+        category_filter = request.args.get('category', 'all')
+
+        # Get all products
+        all_products = []
+        with listed_product_manager._ListedProductManager__get_db() as db:
+            if 'farmer_products' in db:
+                for farmer_products in db['farmer_products'].values():
+                    for product_data in farmer_products.values():
+                        if product_data.get('listing_status') == 'active' and product_data.get('quantity', 0) > 0:
+                            product = ListedProduct(
+                                id=product_data['id'],
+                                name=product_data['name'],
+                                expiry_date=product_data['expiry_date'],
+                                owner=product_data['owner'],
+                                category=product_data['category'],
+                                price=product_data['price'],
+                                quantity=product_data['quantity'],
+                                unit=product_data['unit'],
+                                harvest_date=product_data['harvest_date'],
+                                description=product_data['description'],
+                                additional_info=product_data.get('additional_info'),
+                                images=product_data.get('images', []),
+                                listing_status=product_data.get('listing_status', 'active')
+                            )
+                            all_products.append(product)
+
+        # Apply search filter
+        if search:
+            all_products = [p for p in all_products if search in p.name.lower()]
+
+        # Apply category filter
+        if category_filter != 'all':
+            all_products = [p for p in all_products if p.category == category_filter]
+
+        # Get unique categories for filter dropdown
+        categories = sorted(set(p.category for p in all_products))
+
+        # Apply sorting
+        if sort_by == 'name':
+            all_products.sort(key=lambda x: x.name.lower(), reverse=(sort_order == 'desc'))
+        elif sort_by == 'price':
+            all_products.sort(key=lambda x: x.price, reverse=(sort_order == 'desc'))
+        elif sort_by == 'date':
+            all_products.sort(key=lambda x: x.created_at, reverse=(sort_order == 'desc'))
+
+        # Get user's cart
+        cart = cart_manager.get_cart(session['username'])
+
+        return render_template('shop.html', 
+                             products=all_products,
+                             categories=categories,
+                             search=search,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             category_filter=category_filter)
+
+    except Exception as e:
+        print(f"Error in shop route: {str(e)}")
+        flash('Error loading products', 'danger')
+        return redirect(url_for('customer_dashboard'))
+
+@app.route('/cart')
+@login_required
+def view_cart():
+    """View shopping cart contents"""
+    try:
+        cart = cart_manager.get_cart(session['username'])
+        return render_template('cart.html', cart=cart)
+    except Exception as e:
+        print(f"Error viewing cart: {str(e)}")
+        flash('Error loading cart', 'danger')
+        return redirect(url_for('shop'))
+
+@app.route('/cart/add', methods=['POST'])
+@login_required
+def add_to_cart():
+    """Add item to cart"""
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 1))
+
+        # Get product details
+        product = None
+        with listed_product_manager._ListedProductManager__get_db() as db:
+            for farmer_products in db.get('farmer_products', {}).values():
+                if product_id in farmer_products:
+                    product_data = farmer_products[product_id]
+                    if product_data['quantity'] >= quantity:
+                        product = ListedProduct(
+                            id=product_data['id'],
+                            name=product_data['name'],
+                            expiry_date=product_data['expiry_date'],
+                            owner=product_data['owner'],
+                            category=product_data['category'],
+                            price=product_data['price'],
+                            quantity=product_data['quantity'],
+                            unit=product_data['unit'],
+                            harvest_date=product_data['harvest_date'],
+                            description=product_data['description']
+                        )
+                    break
+
+        if not product:
+            return jsonify({'error': 'Product not found or insufficient stock'}), 400
+
+        # Update cart
+        cart = cart_manager.get_cart(session['username'])
+        cart.add_item(product_id, quantity, product.name, product.price, product.unit)
+        cart_manager.update_cart(session['username'], cart)
+
+        return jsonify(cart.to_dict())
+
+    except Exception as e:
+        print(f"Error adding to cart: {str(e)}")
+        return jsonify({'error': 'Failed to add item to cart'}), 500
+
+@app.route('/cart/update', methods=['POST'])
+@login_required
+def update_cart():
+    """Update cart item quantity"""
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 0))
+
+        cart = cart_manager.get_cart(session['username'])
+        cart.update_quantity(product_id, quantity)
+        cart_manager.update_cart(session['username'], cart)
+
+        return jsonify(cart.to_dict())
+
+    except Exception as e:
+        print(f"Error updating cart: {str(e)}")
+        return jsonify({'error': 'Failed to update cart'}), 500
+
+@app.route('/cart/remove', methods=['POST'])
+@login_required
+def remove_from_cart():
+    """Remove item from cart"""
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+
+        cart = cart_manager.get_cart(session['username'])
+        cart.remove_item(product_id)
+        cart_manager.update_cart(session['username'], cart)
+
+        return jsonify(cart.to_dict())
+
+    except Exception as e:
+        print(f"Error removing from cart: {str(e)}")
+        return jsonify({'error': 'Failed to remove item from cart'}), 500
+    
 
 if __name__ == '__main__':
     init_admin()

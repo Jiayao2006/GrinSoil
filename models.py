@@ -1215,3 +1215,76 @@ class FileTransactionManager:
             print(f"Error in rollback: {str(e)}")
         finally:
             self.operations.clear()
+
+"""add to cart"""
+class CartItem:
+    def __init__(self, product_id: str, quantity: int, name: str, price: float, unit: str):
+        self.product_id = product_id
+        self.quantity = quantity
+        self.name = name
+        self.price = price
+        self.unit = unit
+        self.subtotal = price * quantity
+
+    def to_dict(self):
+        return {
+            'product_id': self.product_id,
+            'quantity': self.quantity,
+            'name': self.name,
+            'price': self.price,
+            'unit': self.unit,
+            'subtotal': self.subtotal
+        }
+
+class Cart:
+    def __init__(self):
+        self.items = {}  # Dictionary of product_id: CartItem
+        self.total = 0.0
+
+    def add_item(self, product_id: str, quantity: int, name: str, price: float, unit: str):
+        if product_id in self.items:
+            self.items[product_id].quantity += quantity
+            self.items[product_id].subtotal = self.items[product_id].quantity * price
+        else:
+            self.items[product_id] = CartItem(product_id, quantity, name, price, unit)
+        self._update_total()
+
+    def remove_item(self, product_id: str):
+        if product_id in self.items:
+            del self.items[product_id]
+            self._update_total()
+
+    def update_quantity(self, product_id: str, quantity: int):
+        if product_id in self.items:
+            if quantity <= 0:
+                self.remove_item(product_id)
+            else:
+                self.items[product_id].quantity = quantity
+                self.items[product_id].subtotal = quantity * self.items[product_id].price
+                self._update_total()
+
+    def _update_total(self):
+        self.total = sum(item.subtotal for item in self.items.values())
+
+    def to_dict(self):
+        return {
+            'items': {pid: item.to_dict() for pid, item in self.items.items()},
+            'total': self.total
+        }
+
+class CartManager:
+    def __init__(self):
+        self.__db_name = 'cart_db'
+    
+    def __get_db(self):
+        return shelve.open(self.__db_name, writeback=True)
+    
+    def get_cart(self, user_id: str) -> Cart:
+        with self.__get_db() as db:
+            if user_id not in db:
+                db[user_id] = Cart()
+            return db[user_id]
+    
+    def update_cart(self, user_id: str, cart: Cart):
+        with self.__get_db() as db:
+            db[user_id] = cart
