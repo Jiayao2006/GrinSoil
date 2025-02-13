@@ -9,6 +9,7 @@ import random
 import werkzeug.exceptions
 from werkzeug.utils import secure_filename
 import os
+import google.generativeai as genai
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -17,6 +18,13 @@ app.secret_key = 'your_secret_key'
 UPLOAD_FOLDER = 'static/product_images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Configure Gemini API
+GOOGLE_API_KEY = 'AIzaSyCCHGtN-tvTeawFeQj7q7t72-lsv_qlw18'  # Replace with your actual API key
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Initialize the model
+model = genai.GenerativeModel('gemini-pro')
 
 # Add this route to __init__.py for debugging
 @app.route('/debug/notifications')
@@ -1444,6 +1452,29 @@ def remove_from_cart():
     except Exception as e:
         print(f"Error removing from cart: {str(e)}")
         return jsonify({'error': 'Failed to remove item from cart'}), 500
+
+@app.route('/chat/message', methods=['POST'])
+@login_required
+def chat_message():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+
+        # Generate response using Gemini
+        response = model.generate_content(user_message)
+        
+        return jsonify({
+            'response': response.text
+        })
+
+    except Exception as e:
+        print(f"Error in chat_message: {str(e)}")
+        return jsonify({
+            'error': 'Failed to generate response'
+        }), 500
     
 
 if __name__ == '__main__':
