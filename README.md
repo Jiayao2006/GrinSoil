@@ -61,4 +61,4 @@ A **smart food sustainability platform** that enables:
 ---
 
 ## 📁 Project Structure  
-
+GrinSOIL/ │── static/ # Static files (CSS, Images) │── templates/ # HTML Templates │── init.py # Main Flask app initialization │── models.py # Database models (User, Product, Review, etc.) │── gunicorn.conf.py # Gunicorn configuration for deployment │── README.md # Project documentation
