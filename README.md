@@ -1,4 +1,3 @@
-# GrinSoil
 <h1 align="center">🌱 GrinSOIL - Sustainable Farming & Food Management Platform 🚜</h1>
 
 <p align="center">
@@ -32,11 +31,19 @@ A **smart food sustainability platform** that enables:
 
 ---
 
+## 🚀 Live Demo  
+🎉 **GrinSOIL is now live on Render!**  
+🔗 [**Visit the Website**](https://grinsoil.onrender.com)  
+
+> 💡 Replace `https://your-grinsoil-app.onrender.com` with your actual **Render deployment link**.
+
+---
+
 ## 🔧 Tech Stack  
 | 🔥 Backend   | 🎨 Frontend  | 💾 Database  | 🚀 Deployment  | 🛠️ Tools  |
 |-------------|-------------|-------------|-------------|-------------|
-| Flask (Python) | HTML, CSS, Bootstrap | Shelve (Key-Value Store) | Gunicorn (WSGI) | Google Gemini API |
-| JWT Auth | JavaScript | File Storage (Images) | Render | Bcrypt (Security) |
+| Flask (Python) | HTML, CSS, Bootstrap | Shelve (Key-Value Store) | **Render** | Google Gemini API |
+| JWT Auth | JavaScript | File Storage (Images) | Gunicorn (WSGI) | Bcrypt (Security) |
 
 ---
 
@@ -59,6 +66,3 @@ A **smart food sustainability platform** that enables:
 - 📣 **Send system-wide notifications**  
 
 ---
-
-## 📁 Project Structure  
-GrinSOIL/ │── static/ # Static files (CSS, Images) │── templates/ # HTML Templates │── init.py # Main Flask app initialization │── models.py # Database models (User, Product, Review, etc.) │── gunicorn.conf.py # Gunicorn configuration for deployment │── README.md # Project documentation
