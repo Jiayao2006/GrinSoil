@@ -35,8 +35,6 @@ A **smart food sustainability platform** that enables:
 🎉 **GrinSOIL is now live on Render!**  
 🔗 [**Visit the Website**](https://grinsoil.onrender.com)  
 
-> 💡 Replace `https://your-grinsoil-app.onrender.com` with your actual **Render deployment link**.
-
 ---
 
 ## 🔧 Tech Stack  
