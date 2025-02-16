@@ -29,8 +29,9 @@
                 <div class="col-md-4">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <!-- Ensure the input has name="search" -->
                         <input type="text" class="form-control" id="search" name="search" 
-                               placeholder="Search products..." value="{{ search }}">
+                        placeholder="Search products..." value="{{ search }}">
                     </div>
                 </div>
 
@@ -122,9 +123,11 @@
                         </div>
 
                         <!-- Product Description Toggle -->
-                        <button class="btn btn-link text-decoration-none p-0 mt-2" type="button" 
+                        <button class="btn btn-link text-decoration-none px-0 mt-3" type="button" 
                                 data-bs-toggle="collapse" 
-                                data-bs-target="#description{{ product.id }}">
+                                data-bs-target="#description{{ product.id }}"
+                                aria-expanded="false"
+                                aria-controls="description{{ product.id }}">
                             Show Description
                         </button>
                         <div class="collapse" id="description{{ product.id }}">
@@ -187,6 +190,27 @@
 
 {% block extra_js %}
 <script>
+    // Add this script to toggle button text and prevent other descriptions from expanding
+    document.getElementById('description{{ product.id }}').addEventListener('show.bs.collapse', function() {
+        const button = document.querySelector('[data-bs-target="#description{{ product.id }}"]');
+        button.textContent = 'Hide Description';
+        
+        // Close other open descriptions
+        document.querySelectorAll('.collapse.show').forEach(el => {
+            if (el.id !== this.id) {
+                const otherButton = document.querySelector(`[data-bs-target="#${el.id}"]`);
+                bootstrap.Collapse.getOrCreateInstance(el).hide();
+                otherButton.textContent = 'Show Description';
+                otherButton.setAttribute('aria-expanded', 'false');
+            }
+        });
+    });
+
+    document.getElementById('description{{ product.id }}').addEventListener('hide.bs.collapse', function() {
+        const button = document.querySelector('[data-bs-target="#description{{ product.id }}"]');
+        button.textContent = 'Show Description';
+    });
+
     // Handle form submissions for filtering and sorting
     document.addEventListener('DOMContentLoaded', function() {
         const filterForm = document.getElementById('filterForm');

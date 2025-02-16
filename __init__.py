@@ -1533,7 +1533,8 @@ def shop():
 
         # Apply search filter
         if search:
-            all_products = [p for p in all_products if search in p.name.lower()]
+            search_lower = search.lower()
+            all_products = [p for p in all_products if search_lower in p.name.lower()]
 
         # Apply category filter
         if category_filter != 'all':
@@ -1665,6 +1666,7 @@ def remove_from_cart():
         traceback.print_exc()
         return jsonify({'error': 'Failed to remove item from cart'}), 500
 
+# In __init__.py - Update the chat_message route
 @app.route('/chat/message', methods=['POST'])
 @login_required
 def chat_message():
@@ -1675,8 +1677,21 @@ def chat_message():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
 
+        # Add scope limitation to the prompt
+        prompt = f"""You are an agricultural assistant. Only answer questions related to:
+        - Food and nutrition
+        - Farming techniques
+        - Crop management
+        - Food safety
+        - Sustainable agriculture
+        - Related topics
+        
+        For other topics, respond: "I specialize in food and agriculture. How can I help you with those topics?"
+        
+        Question: {user_message}"""
+
         # Generate response using Gemini
-        response = model.generate_content(user_message)
+        response = model.generate_content(prompt)
         
         return jsonify({
             'response': response.text
