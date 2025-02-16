@@ -574,13 +574,12 @@ def farmer_dashboard():
 @app.route('/customer_dashboard')
 @login_required
 def customer_dashboard():
-    """Customer dashboard route with improved error handling"""
+    """Customer dashboard route with improved error handling and recent products"""
     try:
-        # Add detailed logging
+        # Basic checks first
         print("Starting customer dashboard load...")
         print(f"Session data: {session}")
         
-        # Basic checks first
         if 'username' not in session:
             print("No username in session")
             flash('Please log in first', 'danger')
@@ -602,33 +601,75 @@ def customer_dashboard():
             flash('Error loading user data', 'danger')
             return redirect(url_for('home'))
             
-        # Get basic stats with fallbacks
+        # Get product stats
         try:
             product_counts = product_manager.get_status_counts(username)
         except Exception as e:
             print(f"Error getting product counts: {str(e)}")
             product_counts = {'fresh': 0, 'expiring-soon': 0}
             
+        # Get recent listed products (fetch 5 most recent products)
         try:
-            notifications = notification_manager.get_notifications_for_role('Customer')
-            notification_counts = {
-                'total': len(notifications),
-                'unread': len([n for n in notifications if username not in n.read_by])
-            }
+            listed_product_manager = ListedProductManager()
+            
+            # Get all listed products and sort by created date
+            all_products = []
+            with listed_product_manager._ListedProductManager__get_db() as db:
+                if 'farmer_products' in db:
+                    for farmer_products in db['farmer_products'].values():
+                        for product_data in farmer_products.values():
+                            if product_data.get('listing_status') == 'active' and product_data.get('quantity', 0) > 0:
+                                product = ListedProduct(
+                                    id=product_data['id'],
+                                    name=product_data['name'],
+                                    expiry_date=product_data['expiry_date'],
+                                    owner=product_data['owner'],
+                                    category=product_data['category'],
+                                    price=product_data['price'],
+                                    quantity=product_data['quantity'],
+                                    unit=product_data['unit'],
+                                    harvest_date=product_data['harvest_date'],
+                                    description=product_data['description'],
+                                    images=product_data.get('images', [])
+                                )
+                                all_products.append(product)
+            
+            # Sort products by created date (most recent first)
+            all_products.sort(
+                key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"), 
+                reverse=True
+            )
+            
+            # Take top 5 recent products
+            recent_products = all_products[:5]
+            
+        except Exception as e:
+            print(f"Error getting recent products: {str(e)}")
+            recent_products = []
+        
+        # Get notifications
+        try:
+            notifications = notification_manager.get_recent_notifications(
+                'Customer', 
+                username, 
+                limit=5
+            )
+            notification_counts = notification_manager.get_notification_counts(
+                'Customer', 
+                username
+            )
         except Exception as e:
             print(f"Error getting notifications: {str(e)}")
             notifications = []
             notification_counts = {'total': 0, 'unread': 0}
             
-        # Get cart data with fallback
+        # Get cart data
         try:
             cart = cart_manager.get_cart(username)
         except Exception as e:
             print(f"Error getting cart: {str(e)}")
             cart = None
             
-        print("Successfully gathered all dashboard data")
-        
         # Get review count
         try:
             review_count = review_manager.get_user_review_count(username)
@@ -638,7 +679,6 @@ def customer_dashboard():
             
         print("Successfully gathered all dashboard data")
         
-        # Render template with gathered data
         return render_template(
             'customer_dashboard.html',
             user=user,
@@ -646,7 +686,8 @@ def customer_dashboard():
             notification_counts=notification_counts,
             notifications=notifications,
             cart=cart,
-            review_count=review_count
+            review_count=review_count,
+            recent_products=recent_products  # Add this new parameter
         )
         
     except Exception as e:

@@ -111,36 +111,92 @@
 
     <!-- Main Content Sections -->
     <div class="row g-4">
-        <!-- Recent Products Section -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Recently Available Products</h5>
-                    <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+        <!-- Recently Available Products Section -->
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center p-4 pb-0">
+                <div>
+                    <h4 class="mb-1 fw-bold text-dark">Recently Available Products</h4>
+                    <p class="text-muted small mb-0">Latest fresh produce from local farmers</p>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Farmer</th>
-                                    <th>Price</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="fas fa-box-open fa-3x mb-3"></i>
-                                        <p class="mb-0">No products available at the moment</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <a href="{{ url_for('shop') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-4 pt-3">
+                {% if recent_products %}
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle">
+                        <thead>
+                            <tr class="text-muted">
+                                <th class="ps-0">Product</th>
+                                <th>Farmer</th>
+                                <th>Price</th>
+                                <th>Availability</th>
+                                <th class="text-end pe-0">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in recent_products %}
+                            <tr class="border-bottom">
+                                <td class="ps-0">
+                                    <div class="d-flex align-items-center">
+                                        {% if product.images %}
+                                        <img src="{{ url_for('static', filename='product_images/' + product.images[0]) }}"
+                                            class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;"
+                                            alt="{{ product.name }}">
+                                        {% else %}
+                                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center"
+                                            style="width: 60px; height: 60px;">
+                                            <i class="fas fa-box text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-1 fw-bold">{{ product.name }}</h6>
+                                            <small class="text-muted">{{ product.category }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-dark">{{ product.owner }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-success">${{ "%.2f"|format(product.price) }}/{{
+                                        product.unit }}</span>
+                                </td>
+                                <td>
+                                    <span
+                                        class="badge 
+                                {% if product.quantity > 10 %}bg-success
+                                {% elif product.quantity > 5 %}bg-warning
+                                {% else %}bg-danger
+                                {% endif %} 
+                                bg-opacity-10 text-{{ 'success' if product.quantity > 10 else 'warning' if product.quantity > 5 else 'danger' }}">
+                                        {{ product.quantity }} {{ product.unit }} left
+                                    </span>
+                                </td>
+                                <td class="text-end pe-0">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                        onclick="addToCart('{{ product.id }}', 1)">
+                                        <i class="fas fa-cart-plus me-1"></i>Add
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-box-open fa-4x text-muted"></i>
                     </div>
+                    <h5 class="mb-2">No Products Available</h5>
+                    <p class="text-muted mb-3">Check back later for fresh produce</p>
+                    <a href="{{ url_for('shop') }}" class="btn btn-primary">
+                        Browse Products
+                    </a>
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -153,7 +209,7 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-3">
-                        <a href="#" class="btn btn-outline-primary">
+                        <a href="{{ url_for('shop') }}" class="btn btn-outline-primary">
                             <i class="fas fa-shopping-basket me-2"></i>Browse Products
                         </a>
                         <a href="{{ url_for('customer_expiry_tracker') }}" class="btn btn-outline-warning">
@@ -235,12 +291,70 @@
         align-items: center;
         justify-content: center;
     }
+
+    .table>tbody>tr:last-child {
+        border-bottom: none !important;
+    }
+
+    .table>tbody>tr {
+        transition: background-color 0.3s ease;
+    }
+
+    .table>tbody>tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
 </style>
 {% endblock %}
 {% block extra_js %}
 <script>
     // Set current date on load
     document.getElementById('currentDate').textContent = formatDate(new Date());
+
+    // Add to Cart functionality
+    async function addToCart(productId, quantity) {
+        try {
+            const response = await fetch('{{ url_for("add_to_cart") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: quantity
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                Product added to cart successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+                document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+
+                // Auto-dismiss after 3 seconds
+                setTimeout(() => alertDiv.remove(), 3000);
+            } else {
+                throw new Error(data.error || 'Failed to add to cart');
+            }
+        } catch (error) {
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+            ${error.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+            document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+    }
 </script>
 {% endblock %}
 {% endblock %}
