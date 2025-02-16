@@ -335,6 +335,114 @@ class UserManager:
             print(f"Authenticated user: {user.username}, role: {user.role}")  # Debug print
             return user
         return None
+    
+    def delete_user_data(self, username: str, role: str) -> bool:
+        """Delete all data associated with a user"""
+        try:
+            print(f"Starting deletion of data for user {username} with role {role}")
+            
+            # Delete orders
+            try:
+                with shelve.open('orders_db', 'w') as orders_db:
+                    if 'orders' in orders_db:
+                        # Get all orders
+                        orders = orders_db['orders']
+                        original_count = len(orders)
+                        
+                        # Filter out user's orders
+                        orders = {k: v for k, v in orders.items() 
+                                if v.get('username') != username}
+                        new_count = len(orders)
+                        
+                        print(f"Removed {original_count - new_count} orders for user {username}")
+                        orders_db['orders'] = orders
+            except Exception as e:
+                print(f"Error deleting orders: {str(e)}")
+
+            # Delete reviews
+            try:
+                review_manager = ReviewManager()
+                user_reviews = review_manager.get_user_reviews(username)
+                print(f"Found {len(user_reviews)} reviews to delete")
+                for review in user_reviews:
+                    review_manager.delete_review(review.id)
+            except Exception as e:
+                print(f"Error deleting reviews: {str(e)}")
+
+            # Delete notifications
+            try:
+                with shelve.open('notifications_db', 'w') as notifications_db:
+                    for key in list(notifications_db.keys()):
+                        try:
+                            notification = notifications_db[key]
+                            # Remove notifications where user is mentioned
+                            if (username in str(notification.get('content', '')) or
+                                notification.get('target_user') == username):
+                                del notifications_db[key]
+                            else:
+                                # Remove user from read_by lists
+                                read_by = notification.get('read_by', [])
+                                if username in read_by:
+                                    read_by.remove(username)
+                                    notification['read_by'] = read_by
+                                    notifications_db[key] = notification
+                        except Exception as e:
+                            print(f"Error processing notification {key}: {str(e)}")
+                            continue
+            except Exception as e:
+                print(f"Error deleting notifications: {str(e)}")
+
+            # Delete products and expiry tracker items
+            try:
+                product_manager = ProductManager()
+                product_manager.delete_user_products(username)
+            except Exception as e:
+                print(f"Error deleting products: {str(e)}")
+
+            # Delete cart
+            try:
+                cart_manager = CartManager()
+                cart_manager.clear_cart(username)
+            except Exception as e:
+                print(f"Error clearing cart: {str(e)}")
+
+            # If user is a farmer, handle farmer-specific data
+            if role == 'Farmer':
+                try:
+                    # Delete listed products
+                    listed_product_manager = ListedProductManager()
+                    listed_product_manager.delete_farmer_products(username)
+
+                    # Update orders that reference this farmer
+                    with shelve.open('orders_db', 'w') as orders_db:
+                        if 'orders' in orders_db:
+                            orders = orders_db['orders']
+                            for order_id, order_data in orders.items():
+                                farmer_statuses = order_data.get('farmer_statuses', {})
+                                if username in farmer_statuses:
+                                    # Remove farmer status
+                                    del farmer_statuses[username]
+                                    order_data['farmer_statuses'] = farmer_statuses
+                                    
+                                    # Remove items from this farmer
+                                    items = order_data.get('items', [])
+                                    items = [item for item in items 
+                                           if item.get('farmer_username') != username]
+                                    order_data['items'] = items
+                                    
+                                    orders[order_id] = order_data
+                            orders_db['orders'] = orders
+                except Exception as e:
+                    print(f"Error handling farmer-specific data: {str(e)}")
+
+            print(f"Successfully completed data deletion for user {username}")
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting user data: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
 
 class ProductManager:
     def __init__(self):
@@ -559,6 +667,15 @@ class ReviewManager:
                 data['created_at'],
                 data['updated_at']
             )
+        
+    def get_user_review_count(self, username: str) -> int:
+        """Get the count of reviews for a specific user"""
+        try:
+            reviews = self.get_user_reviews(username)
+            return len(reviews)
+        except Exception as e:
+            print(f"Error getting review count: {str(e)}")
+            return 0
         
 class Notification:
     def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, read_by: List[str] = None, updated_at: str = None, target_user: str = None):

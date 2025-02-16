@@ -551,12 +551,16 @@ def farmer_dashboard():
         # Get other dashboard data
         product_counts = product_manager.get_status_counts(username)
         
+        # Get review count
+        review_count = review_manager.get_user_review_count(username)
+        
         return render_template(
             'farmer_dashboard.html',
             user=user,
             product_counts=product_counts,
             notification_counts=notification_counts,
-            notifications=recent_notifications
+            notifications=recent_notifications,
+            review_count=review_count
         )
         
     except Exception as e:
@@ -625,6 +629,15 @@ def customer_dashboard():
             
         print("Successfully gathered all dashboard data")
         
+        # Get review count
+        try:
+            review_count = review_manager.get_user_review_count(username)
+        except Exception as e:
+            print(f"Error getting review count: {str(e)}")
+            review_count = 0
+            
+        print("Successfully gathered all dashboard data")
+        
         # Render template with gathered data
         return render_template(
             'customer_dashboard.html',
@@ -632,7 +645,8 @@ def customer_dashboard():
             product_counts=product_counts,
             notification_counts=notification_counts,
             notifications=notifications,
-            cart=cart
+            cart=cart,
+            review_count=review_count
         )
         
     except Exception as e:
@@ -755,11 +769,32 @@ def create_admin():
 @app.route('/admin/delete_user/<username>')
 @admin_required
 def delete_user(username):
-    if user_manager.delete_user(username):
-        flash(f'User {username} has been deleted', 'success')
-    else:
-        flash('User not found', 'danger')
-    return redirect(url_for('admin_dashboard'))
+    try:
+        # Get user role before deletion
+        user = user_manager.get_user(username)
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('admin_dashboard'))
+            
+        # Delete user data first
+        if not user_manager.delete_user_data(username, user.role):
+            flash('Error deleting user data', 'danger')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Then delete the user account
+        if user_manager.delete_user(username):
+            flash(f'User {username} has been deleted', 'success')
+        else:
+            flash('Error deleting user account', 'danger')
+            
+        return redirect(url_for('admin_dashboard'))
+        
+    except Exception as e:
+        print(f"Error in admin delete_user: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while deleting the user', 'danger')
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/update_user/<username>', methods=['POST'])
 @admin_required
@@ -921,13 +956,31 @@ def update_user_settings():
 @app.route('/user/delete', methods=['POST'])
 @login_required
 def delete_user_account():
-    username = session['username']
-    if user_manager.delete_user(username):
-        session.clear()
-        flash('Your account has been deleted successfully', 'success')
-        return redirect(url_for('home'))
-    flash('Failed to delete account', 'danger')
-    return redirect(url_for('user_settings'))
+    """Delete user account and all associated data"""
+    try:
+        username = session['username']
+        role = session.get('role')
+        
+        # First delete all associated data
+        if not user_manager.delete_user_data(username, role):
+            flash('Error deleting user data', 'danger')
+            return redirect(url_for('user_settings'))
+        
+        # Then delete the user account
+        if user_manager.delete_user(username):
+            session.clear()
+            flash('Your account has been deleted successfully', 'success')
+            return redirect(url_for('home'))
+            
+        flash('Failed to delete account', 'danger')
+        return redirect(url_for('user_settings'))
+        
+    except Exception as e:
+        print(f"Error in delete_user_account: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while deleting your account', 'danger')
+        return redirect(url_for('user_settings'))
 
 """notifications"""
 notification_manager = NotificationManager()
@@ -2130,13 +2183,14 @@ def delete_farmer_order(order_id):
 @app.route('/customer/order-tracker')
 @login_required
 def customer_order_tracker():
-    """Show customer's order history"""
+    """Show customer's order history with status filtering"""
     if session.get('role') != 'Customer':
         flash('Access denied', 'danger')
         return redirect(url_for('home'))
         
     try:
         username = session['username']
+        status_filter = request.args.get('status', 'all').lower()
         orders = []
         
         # Open orders database and get all orders
@@ -2146,11 +2200,18 @@ def customer_order_tracker():
             # Filter orders for current user and format them
             for order_id, order_data in all_orders.items():
                 if order_data.get('username') == username:
-                    # Format the order data as a dictionary
+                    # Get order status
+                    order_status = order_data.get('status', 'processing').lower()
+                    
+                    # Apply status filter
+                    if status_filter != 'all' and order_status != status_filter:
+                        continue
+                    
+                    # Format the order data
                     formatted_order = {
                         'order_id': order_data.get('order_id', order_id),
                         'created_at': order_data.get('created_at', ''),
-                        'items': list(order_data.get('items', [])),  # Ensure items is a list
+                        'items': list(order_data.get('items', [])),
                         'total': float(order_data.get('total', 0)),
                         'shipping_info': order_data.get('shipping_info', {
                             'name': '',
@@ -2159,12 +2220,9 @@ def customer_order_tracker():
                             'city': '',
                             'postal_code': ''
                         }),
-                        'status': order_data.get('status', 'Processing'),
+                        'status': order_status.capitalize(),
                         'farmer_statuses': order_data.get('farmer_statuses', {})
                     }
-                    
-                    # Debug print the order structure
-                    print(f"Formatted order: {formatted_order}")
                     orders.append(formatted_order)
             
             # Sort orders by date, most recent first
@@ -2173,7 +2231,9 @@ def customer_order_tracker():
                 reverse=True
             )
         
-        return render_template('customer_order_tracker.html', orders=orders)
+        return render_template('customer_order_tracker.html', 
+                             orders=orders,
+                             status_filter=status_filter)
         
     except Exception as e:
         print(f"Error in customer_order_tracker: {str(e)}")
