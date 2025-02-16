@@ -10,6 +10,9 @@ import werkzeug.exceptions
 from werkzeug.utils import secure_filename
 import os
 import google.generativeai as genai
+import shutil
+import uuid
+import traceback
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -25,6 +28,11 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 # Initialize the model
 model = genai.GenerativeModel('gemini-pro')
+
+# In your __init__.py
+@app.before_request
+def before_request():
+    print(f"Before request session: {session}")  # Debug print
 
 # Add this route to __init__.py for debugging
 @app.route('/debug/notifications')
@@ -245,6 +253,7 @@ def verify_otp():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print(f"Checking login - Current session: {session}")  # Debug print
         if 'username' not in session:
             flash('Please log in first', 'danger')
             return redirect(url_for('signup_login'))
@@ -473,26 +482,40 @@ def signup():
 # Also ensure that your login route sets the session
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
-    
-    if not all([username, password]):
-        flash('Please provide both username and password', 'danger')
+    try:
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not all([username, password]):
+            flash('Please provide both username and password', 'danger')
+            return redirect(url_for('signup_login'))
+        
+        user = user_manager.authenticate_user(username, password)
+        if user:
+            # Set session variables
+            session['username'] = username
+            session['role'] = user.role
+            print(f"Login successful - Username: {username}, Role: {user.role}")  # Debug print
+            
+            flash('Login successful!', 'success')
+            
+            # Redirect based on role
+            if user.role == 'Farmer':
+                return redirect(url_for('farmer_dashboard'))
+            elif user.role == 'Customer':
+                return redirect(url_for('customer_dashboard'))
+            else:
+                flash('Invalid user role', 'danger')
+                session.clear()
+                return redirect(url_for('signup_login'))
+            
+        flash('Invalid username or password', 'danger')
         return redirect(url_for('signup_login'))
-    
-    user = user_manager.authenticate_user(username, password)
-    if user:
-        # Set session variables
-        session['username'] = username
-        session['role'] = user.role
-        flash('Login successful!', 'success')
-        if user.role == 'Farmer':
-            return redirect(url_for('farmer_dashboard'))
-        else:
-            return redirect(url_for('customer_dashboard'))
-    
-    flash('Invalid username or password', 'danger')
-    return redirect(url_for('signup_login'))
+        
+    except Exception as e:
+        print(f"Error in login: {str(e)}")
+        flash('An error occurred during login', 'danger')
+        return redirect(url_for('signup_login'))
 
 """Logout route"""
 @app.route('/logout')
@@ -503,36 +526,43 @@ def logout():
     return redirect(url_for('home'))
 
 """farmer and customer dashboard"""
+from dashboard_utils import (
+    get_dashboard_stats,
+    get_quick_actions,
+    validate_dashboard_access,
+    format_dashboard_data
+)
+
 @app.route('/farmer_dashboard')
 @login_required
 def farmer_dashboard():
+    """Farmer dashboard route with reduced complexity"""
     try:
-        if session.get('role') != 'Farmer':
-            flash('Access denied', 'danger')
-            return redirect(url_for('signup_login'))
-        
+        # Get user data
         user = user_manager.get_user(session['username'])
-        counts = product_manager.get_status_counts(session['username'])
         
-        # Get notifications with better error handling
-        try:
-            notifications = notification_manager.get_notifications_for_role('Farmer')
-            notification_counts = {
-                'total': len(notifications),
-                'unread': len([n for n in notifications if session['username'] not in n.read_by])
-            }
-        except Exception as e:
-            print(f"Error getting notifications: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            notifications = []
-            notification_counts = {'total': 0, 'unread': 0}
+        # Validate access
+        is_valid, error = validate_dashboard_access(user, 'Farmer')
+        if not is_valid:
+            flash(error, 'danger')
+            return redirect(url_for('home'))
         
-        return render_template('farmer_dashboard.html', 
-                             user=user, 
-                             product_counts=counts,
-                             notification_counts=notification_counts,
-                             notifications=notifications)
+        # Get dashboard data
+        stats = get_dashboard_stats(
+            user=user,
+            product_manager=product_manager,
+            notification_manager=notification_manager,
+            listed_product_manager=listed_product_manager
+        )
+        
+        # Get quick actions
+        actions = get_quick_actions('Farmer')
+        
+        # Format data for template
+        template_data = format_dashboard_data(user, stats, actions)
+        
+        return render_template('farmer_dashboard.html', **template_data)
+        
     except Exception as e:
         print(f"Error in farmer_dashboard: {str(e)}")
         flash('An error occurred while loading the dashboard', 'danger')
@@ -542,37 +572,98 @@ def farmer_dashboard():
 @app.route('/customer_dashboard')
 @login_required
 def customer_dashboard():
+    """Customer dashboard route with improved error handling"""
     try:
-        if session.get('role') != 'Customer':
-            flash('Access denied', 'danger')
+        # Add detailed logging
+        print("Starting customer dashboard load...")
+        print(f"Session data: {session}")
+        
+        # Basic checks first
+        if 'username' not in session:
+            print("No username in session")
+            flash('Please log in first', 'danger')
             return redirect(url_for('signup_login'))
+            
+        username = session.get('username')
+        print(f"Loading dashboard for user: {username}")
         
-        user = user_manager.get_user(session['username'])
-        counts = product_manager.get_status_counts(session['username'])
-        
-        # Get notifications with better error handling
+        # Get user data with explicit error handling
+        try:
+            user = user_manager.get_user(username)
+            if not user:
+                print(f"User not found: {username}")
+                session.clear()
+                flash('User account not found', 'danger')
+                return redirect(url_for('signup_login'))
+        except Exception as e:
+            print(f"Error getting user data: {str(e)}")
+            flash('Error loading user data', 'danger')
+            return redirect(url_for('home'))
+            
+        # Get basic stats with fallbacks
+        try:
+            product_counts = product_manager.get_status_counts(username)
+        except Exception as e:
+            print(f"Error getting product counts: {str(e)}")
+            product_counts = {'fresh': 0, 'expiring-soon': 0}
+            
         try:
             notifications = notification_manager.get_notifications_for_role('Customer')
             notification_counts = {
                 'total': len(notifications),
-                'unread': len([n for n in notifications if session['username'] not in n.read_by])
+                'unread': len([n for n in notifications if username not in n.read_by])
             }
         except Exception as e:
             print(f"Error getting notifications: {str(e)}")
-            import traceback
-            traceback.print_exc()
             notifications = []
             notification_counts = {'total': 0, 'unread': 0}
+            
+        # Get cart data with fallback
+        try:
+            cart = cart_manager.get_cart(username)
+        except Exception as e:
+            print(f"Error getting cart: {str(e)}")
+            cart = None
+            
+        print("Successfully gathered all dashboard data")
         
-        return render_template('customer_dashboard.html', 
-                             user=user, 
-                             product_counts=counts,
-                             notification_counts=notification_counts,
-                             notifications=notifications)
+        # Render template with gathered data
+        return render_template(
+            'customer_dashboard.html',
+            user=user,
+            product_counts=product_counts,
+            notification_counts=notification_counts,
+            notifications=notifications,
+            cart=cart
+        )
+        
     except Exception as e:
-        print(f"Error in customer_dashboard: {str(e)}")
+        print(f"Critical error in customer_dashboard: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash('An error occurred while loading the dashboard', 'danger')
         return redirect(url_for('home'))
+    
+# Add a debug route to check session and database state
+@app.route('/debug/dashboard')
+def debug_dashboard():
+    """Debug route to check dashboard dependencies"""
+    if not app.debug:
+        return "Debug route only available in debug mode", 403
+        
+    try:
+        debug_info = {
+            'session': dict(session),
+            'user_exists': bool(user_manager.get_user(session.get('username'))) if 'username' in session else False,
+            'notifications_db_test': bool(notification_manager.get_notifications_for_role(session.get('role'))) if 'role' in session else False,
+            'product_manager_test': bool(product_manager.get_status_counts(session.get('username'))) if 'username' in session else False
+        }
+        return jsonify(debug_info)
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 @app.route('/notification/mark-read/<notification_id>', methods=['POST'])
 @login_required
@@ -1284,10 +1375,29 @@ cart_manager = CartManager()
 @app.context_processor
 def inject_cart():
     """Inject cart data into all templates"""
-    if 'username' in session:
-        cart = cart_manager.get_cart(session['username'])
-        return {'cart': cart}
-    return {'cart': None}
+    try:
+        if 'username' in session:
+            cart = cart_manager.get_cart(session['username'])
+            return {
+                'cart': cart,
+                'cart_items': cart.get_items(),
+                'cart_total': cart.total,
+                'cart_count': len(cart)
+            }
+        return {
+            'cart': Cart(),
+            'cart_items': [],
+            'cart_total': 0,
+            'cart_count': 0
+        }
+    except Exception as e:
+        print(f"Error injecting cart: {str(e)}")
+        return {
+            'cart': Cart(),
+            'cart_items': [],
+            'cart_total': 0,
+            'cart_count': 0
+        }
 
 @app.route('/shop')
 @login_required
@@ -1414,6 +1524,8 @@ def add_to_cart():
 
     except Exception as e:
         print(f"Error adding to cart: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to add item to cart'}), 500
 
 @app.route('/cart/update', methods=['POST'])
@@ -1433,6 +1545,8 @@ def update_cart():
 
     except Exception as e:
         print(f"Error updating cart: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to update cart'}), 500
 
 @app.route('/cart/remove', methods=['POST'])
@@ -1451,6 +1565,8 @@ def remove_from_cart():
 
     except Exception as e:
         print(f"Error removing from cart: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to remove item from cart'}), 500
 
 @app.route('/chat/message', methods=['POST'])
@@ -1476,6 +1592,346 @@ def chat_message():
             'error': 'Failed to generate response'
         }), 500
     
+"""checkout"""
+@app.route('/checkout')
+@login_required
+def checkout():
+    try:
+        cart = cart_manager.get_cart(session['username'])
+        return render_template('checkout.html', cart=cart)
+    except Exception as e:
+        print(f"Error in checkout: {str(e)}")
+        flash('Error loading checkout page', 'danger')
+        return redirect(url_for('view_cart'))
+    
+@app.route('/confirmation')
+@login_required
+def confirmation():
+    try:
+        # Get the latest order ID, first from session, then try to find a recent order
+        order_id = session.get('latest_order_id')
+        
+        print(f"CONFIRMATION: Attempting to retrieve order ID: {order_id}")
+        print(f"CONFIRMATION: Current session: {dict(session)}")
+        
+        # If no order ID in session, try to find the most recent order
+        if not order_id:
+            with shelve.open('orders_db', 'r') as db:
+                if 'orders' in db:
+                    # Find the most recent order for the user
+                    recent_orders = [
+                        (oid, order) for oid, order in db['orders'].items() 
+                        if order.get('username') == session['username'] 
+                        and order.get('status') in ['processing', 'completed']
+                    ]
+                    
+                    if recent_orders:
+                        # Sort by creation time and get the most recent
+                        recent_orders.sort(
+                            key=lambda x: datetime.strptime(x[1]['created_at'], "%Y-%m-%d %H:%M:%S"), 
+                            reverse=True
+                        )
+                        order_id, order_data = recent_orders[0]
+                        print(f"CONFIRMATION: Found recent order: {order_id}")
+                    else:
+                        print("CONFIRMATION: No recent orders found")
+                        flash('No recent orders found', 'danger')
+                        return redirect(url_for('shop'))
+                else:
+                    print("CONFIRMATION: No orders in database")
+                    flash('No orders found', 'danger')
+                    return redirect(url_for('shop'))
+        else:
+            # Retrieve order from database
+            with shelve.open('orders_db', 'r') as db:
+                if 'orders' not in db or order_id not in db['orders']:
+                    print(f"CONFIRMATION: Order {order_id} not found in database")
+                    flash('Order not found', 'danger')
+                    return redirect(url_for('shop'))
+                
+                order_data = db['orders'][order_id]
+        
+        # Validate order belongs to current user
+        if order_data['username'] != session['username']:
+            print("CONFIRMATION: Unauthorized order access")
+            flash('Unauthorized access to order', 'danger')
+            return redirect(url_for('shop'))
+        
+        # Ensure order is processed or completed
+        if order_data.get('status') not in ['processing', 'completed']:
+            print("CONFIRMATION: Order not in processable state")
+            flash('Order is not in a valid state', 'danger')
+            return redirect(url_for('shop'))
+        
+        # Create notifications for farmers
+        for item in order_data['items']:
+            notification_manager.create_notification(
+                title="New Order Received",
+                content=f"New order received for {item['quantity']} {item['unit']} of {item['name']}",
+                target_role="Farmer"
+            )
+        
+        # Clear the latest order ID from session
+        session.pop('latest_order_id', None)
+        
+        # Convert datetime string to a more readable format
+        order_data['created_at_formatted'] = datetime.strptime(
+            order_data['created_at'], 
+            "%Y-%m-%d %H:%M:%S"
+        ).strftime("%B %d, %Y at %I:%M %p")
+        
+        # Explicitly ensure items is a list
+        if not isinstance(order_data['items'], list):
+            order_data['items'] = list(order_data['items'])
+        
+        # Debug print to verify items
+        print("CONFIRMATION: Order Items:")
+        print(order_data['items'])
+        
+        
+        return render_template('confirmation.html', order=order_data)
+                
+    except Exception as e:
+        print(f"CONFIRMATION: Error processing confirmation: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('Error processing order', 'danger')
+        return redirect(url_for('shop'))
+    
+"""pdf"""
+# Initialize PDF manager
+order_manager = OrderManager()
+
+@app.route('/order/create', methods=['POST'])
+@login_required
+def create_order():
+    try:
+        # Get shipping info from form
+        shipping_info = {
+            'name': request.form.get('fullName'),
+            'phone': request.form.get('phone'),
+            'address': request.form.get('street'),
+            'city': request.form.get('city'),
+            'postal_code': request.form.get('postalCode')
+        }
+        
+        # Get cart data
+        cart = cart_manager.get_cart(session['username'])
+        
+        # Create order
+        order_id = order_manager.create_order(
+            username=session['username'],
+            cart_items=cart.items,
+            shipping_info=shipping_info
+        )
+        
+        if not order_id:
+            raise Exception("Failed to create order")
+        
+        # Get the order data for PDF generation
+        order_data = {
+            'order_id': order_id,
+            'items': [item.to_dict() for item in cart.items.values()],
+            'total': cart.total,
+            'shipping_info': shipping_info,
+            'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Clear cart after successful order
+        new_cart = Cart()
+        cart_manager.update_cart(session['username'], new_cart)
+        
+        return jsonify({
+            'status': 'success',
+            'order_id': order_id,
+            'order_data': order_data
+        })
+        
+    except Exception as e:
+        print(f"Error creating order: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create order'
+        }), 500
+
+@app.route('/order/<order_id>')
+@login_required
+def get_order(order_id):
+    try:
+        order_data = order_manager.get_order(order_id)
+        if not order_data or order_data['username'] != session['username']:
+            return jsonify({
+                'status': 'error',
+                'message': 'Order not found'
+            }), 404
+            
+        return jsonify({
+            'status': 'success',
+            'order_data': order_data
+        })
+        
+    except Exception as e:
+        print(f"Error getting order: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to get order'
+        }), 500
+
+@app.route('/checkout/complete', methods=['POST'])
+@login_required
+def complete_checkout():
+    try:
+        # Get shipping info from form
+        shipping_info = {
+            'name': request.form.get('fullName'),
+            'phone': request.form.get('phone'),
+            'address': request.form.get('street'),
+            'city': request.form.get('city'),
+            'postal_code': request.form.get('postalCode')
+        }
+        
+        # Validate shipping info
+        if not all(shipping_info.values()):
+            print("CHECKOUT: Incomplete shipping information")
+            flash('Please fill in all shipping information', 'danger')
+            return redirect(url_for('checkout'))
+        
+        # Get cart
+        cart = cart_manager.get_cart(session['username'])
+        
+        # Check if cart is empty
+        if not cart.items:
+            print("CHECKOUT: Cart is empty")
+            flash('Your cart is empty', 'danger')
+            return redirect(url_for('checkout'))
+        
+        # Debug: Print cart items
+        print("CHECKOUT: Cart Items:")
+        for pid, item in cart.items.items():
+            print(f"Product ID: {pid}, Name: {item.name}, Quantity: {item.quantity}, Price: {item.price}")
+        
+        # Validate stock before creating order
+        stock_check_passed = True
+        insufficient_items = []
+        
+        for item in cart.items.values():
+            product = listed_product_manager.get_product(item.product_id)
+            
+            if not product:
+                print(f"CHECKOUT: Product not found - {item.name} (ID: {item.product_id})")
+                stock_check_passed = False
+                insufficient_items.append(item.name)
+                continue
+            
+            print(f"CHECKOUT: Stock check - {item.name}")
+            print(f"Requested Quantity: {item.quantity}, Available: {product.quantity}")
+            
+            if product.quantity < item.quantity:
+                print(f"CHECKOUT: Insufficient stock for {item.name}")
+                stock_check_passed = False
+                insufficient_items.append(item.name)
+        
+        # Stop if stock check fails
+        if not stock_check_passed:
+            error_message = f"Insufficient stock for: {', '.join(insufficient_items)}"
+            print(f"CHECKOUT: {error_message}")
+            flash(error_message, 'danger')
+            return redirect(url_for('checkout'))
+        
+        # Create order with initial processing status
+        order_id = order_manager.create_order(
+            username=session['username'],
+            cart_items=cart.items,
+            shipping_info=shipping_info,
+            status=OrderStatus.PROCESSING
+        )
+        
+        # Debug: Check order creation
+        print(f"CHECKOUT: Order created with ID {order_id}")
+        
+        if not order_id:
+            print("CHECKOUT: Failed to create order")
+            flash('Failed to create order', 'danger')
+            return redirect(url_for('checkout'))
+        
+        # Update product quantities and finalize order
+        try:
+            for item in cart.items.values():
+                product = listed_product_manager.get_product(item.product_id)
+                
+                if product:
+                    # Reduce stock
+                    new_quantity = product.quantity - item.quantity
+                    listed_product_manager.update_product_quantity(
+                        item.product_id, 
+                        product.owner, 
+                        new_quantity
+                    )
+                    print(f"CHECKOUT: Updated stock for {item.name}. New quantity: {new_quantity}")
+                else:
+                    print(f"CHECKOUT: Product not found during stock update - {item.name}")
+            
+            # Mark order as completed and clear cart
+            if order_manager.finalize_order(order_id, cart_manager, session['username']):
+                print(f"CHECKOUT: Order {order_id} finalized successfully")
+                # Store order ID in session
+                session['latest_order_id'] = order_id
+                return redirect(url_for('confirmation'))
+            else:
+                print("CHECKOUT: Failed to finalize order")
+                flash('Failed to complete order', 'danger')
+                return redirect(url_for('checkout'))
+                
+        except Exception as e:
+            print(f"CHECKOUT: Error finalizing order: {str(e)}")
+            order_manager.update_order_status(order_id, OrderStatus.CANCELLED)
+            flash('An error occurred while processing your order', 'danger')
+            return redirect(url_for('checkout'))
+        
+    except Exception as e:
+        print(f"CHECKOUT: Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An unexpected error occurred', 'danger')
+        return redirect(url_for('checkout'))
+
+@app.route('/order/latest')
+@login_required
+def get_latest_order():
+    try:
+        # Open the shelve database directly
+        with shelve.open('orders_db') as db:
+            if 'orders' in db:
+                # Filter and sort orders for the current user
+                user_orders = [
+                    order for order in db['orders'].values() 
+                    if order['username'] == session['username']
+                ]
+                
+                if not user_orders:
+                    return jsonify({'status': 'error', 'message': 'No orders found for this user'}), 404
+                
+                # Get the most recent order
+                latest_order = max(user_orders, key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"))
+                
+                return jsonify({
+                    'status': 'success',
+                    'order_data': {
+                        'order_id': latest_order['order_id'],
+                        'items': latest_order['items'],
+                        'total': sum(item['subtotal'] for item in latest_order['items']),
+                        'shipping_info': latest_order['shipping_info'],
+                        'date': latest_order['created_at']
+                    }
+                })
+            
+            return jsonify({'status': 'error', 'message': 'No orders found'}), 404
+    
+    except Exception as e:
+        print(f"Error getting latest order: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': 'Failed to retrieve latest order'}), 500
 
 if __name__ == '__main__':
     init_admin()

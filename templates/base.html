@@ -37,6 +37,12 @@
         .alert.fade {
             transition: opacity 0.3s ease-in-out;
         }
+
+        /* Fix dropdown menu positioning */
+        .dropdown-menu {
+            right: 0;
+            left: auto;
+        }
     </style>
 </head>
 
@@ -59,16 +65,15 @@
                         <a class="nav-link" href="{{ url_for('about') }}">About</a>
                     </li>
                 </ul>
-                <div class="d-flex">
+                <div class="d-flex" style="min-width: 150px;">
                     {% if session.get('username') %}
                     <div class="dropdown">
-                        <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <button class="btn btn-outline-success dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             {{ session.get('username') }}
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu" aria-labelledby="userDropdown">
                             <li>
-                                <a class="dropdown-item"
-                                    href="{{ url_for(session.get('role', '').lower() + '_dashboard') }}">
+                                <a class="dropdown-item" href="{{ url_for(session.get('role', '').lower() + '_dashboard') }}">
                                     Dashboard
                                 </a>
                             </li>

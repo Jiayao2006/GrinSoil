@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        /* Add your PDF styles here */
+    </style>
+</head>
+<body>
+    <h1>Order Summary</h1>
+    <p>Order ID: {{ order.order_id }}</p>
+    <p>Date: {{ order.date }}</p>
+    
+    <!-- Order Items -->
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ "%.2f"|format(item.price) }}</td>
+                <td>${{ "%.2f"|format(item.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h3>Total: ${{ "%.2f"|format(order.total) }}</h3>
+</body>
+</html>

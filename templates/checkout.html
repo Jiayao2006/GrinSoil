@@ -1,0 +1,202 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Include Timeline Template -->
+    {% with active_step='payment', show_descriptions=false %}
+    {% include 'timeline.html' %}
+    {% endwith %}
+
+    <!-- Payment Form -->
+    <div class="row">
+        <div class="col-lg-8" style="margin-left:auto; margin-right:auto;">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Payment Details</h5>
+                </div>
+                <div class="card-body">
+                    <form id="payment-form">
+                        <!-- Contact Details -->
+                        <h6 class="mb-3">Contact Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" name="fullName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" name="phone" required>
+                            </div>
+                        </div>
+
+                        <!-- Address Details -->
+                        <h6 class="mb-3">Shipping Address</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Street Address</label>
+                            <input type="text" class="form-control" name="street" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">City</label>
+                                <input type="text" class="form-control" name="city" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Postal Code</label>
+                                <input type="text" class="form-control" name="postalCode" required>
+                            </div>
+                        </div>
+
+                        <!-- Card Details -->
+                        <h6 class="mb-3">Payment Information</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Card Number</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="cardNumber" placeholder="4242 4242 4242 4242" required maxlength="19">
+                                <span class="input-group-text"><i class="fab fa-cc-visa"></i></span>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Expiration Date</label>
+                                <input type="text" class="form-control" id="expiryDate" placeholder="MM/YY" required maxlength="5">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">CVC</label>
+                                <input type="text" class="form-control" id="cvc" placeholder="123" required maxlength="3">
+                            </div>
+                        </div>
+
+                        <!-- Order Summary -->
+                        <div class="border-top pt-3">
+                            <h6>Order Summary</h6>
+                            {% for item in cart.items.values() %}
+                            <div class="d-flex justify-content-between small">
+                                <span>{{ item.name }} × {{ item.quantity }}</span>
+                                <span>${{ "%.2f"|format(item.subtotal) }}</span>
+                            </div>
+                            {% endfor %}
+                            <div class="d-flex justify-content-between mt-2 fw-bold">
+                                <span>Total:</span>
+                                <span>${{ "%.2f"|format(cart.total) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="d-flex gap-3 mt-4">
+                            <a href="{{ url_for('view_cart') }}" class="btn btn-outline-secondary flex-grow-1">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Cart
+                            </a>
+                            <button type="submit" class="btn btn-success flex-grow-1">
+                                <i class="fas fa-lock me-2"></i>Pay Now
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Card Number Validation
+document.getElementById('cardNumber').addEventListener('input', function(e) {
+    // Remove any non-digit characters
+    let value = this.value.replace(/\D/g, '');
+    
+    // Add spaces after every 4 digits
+    let formattedValue = '';
+    for(let i = 0; i < value.length; i++) {
+        if(i > 0 && i % 4 === 0) {
+            formattedValue += ' ';
+        }
+        formattedValue += value[i];
+    }
+    
+    // Limit to 16 digits (19 characters including spaces)
+    if(value.length <= 16) {
+        this.value = formattedValue;
+    } else {
+        this.value = formattedValue.substr(0, 19);
+    }
+});
+
+// Expiry Date Validation
+document.getElementById('expiryDate').addEventListener('input', function(e) {
+    let value = this.value.replace(/\D/g, '');
+    
+    // Add forward slash after month
+    if(value.length >= 2) {
+        let month = value.substr(0, 2);
+        let year = value.substr(2);
+        
+        // Validate month (01-12)
+        if(parseInt(month) > 12) {
+            month = '12';
+        } else if(parseInt(month) < 1) {
+            month = '01';
+        }
+        
+        this.value = month + (value.length > 2 ? '/' + year : '');
+    } else {
+        this.value = value;
+    }
+});
+
+// CVC Validation
+document.getElementById('cvc').addEventListener('input', function(e) {
+    // Only allow digits
+    let value = this.value.replace(/\D/g, '');
+    
+    // Limit to 3 digits
+    this.value = value.substr(0, 3);
+});
+
+// Form Validation
+// Form Validation
+document.getElementById('payment-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Collect form data
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('{{ url_for("complete_checkout") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            // Redirect to confirmation page
+            window.location.href = '{{ url_for("confirmation") }}';
+        } else {
+            // Handle error response
+            const errorData = await response.text();
+            showAlert('Error processing order. Please try again.', 'danger');
+        }
+    } catch (error) {
+        console.error('Checkout error:', error);
+        showAlert('An unexpected error occurred', 'danger');
+    }
+});
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+<!-- timeline.html -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Checkout Process</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline d-flex flex-column flex-md-row">
+                    <div class="timeline-step {% if active_step == 'cart' %}active{% elif active_step == 'payment' or active_step == 'confirmation' %}completed{% endif %} mb-3 mb-md-0">
+                        <div class="timeline-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6>Review Cart</h6>
+                            {% if show_descriptions %}
+                            <p class="text-muted d-none d-md-block">Review your selected items before proceeding to checkout.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="timeline-step {% if active_step == 'payment' %}active{% elif active_step == 'confirmation' %}completed{% endif %} mb-3 mb-md-0">
+                        <div class="timeline-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6>Payment Details</h6>
+                            {% if show_descriptions %}
+                            <p class="text-muted d-none d-md-block">Enter your payment information to complete the purchase.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="timeline-step {% if active_step == 'confirmation' %}active{% endif %} mb-3 mb-md-0">
+                        <div class="timeline-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6>Confirmation</h6>
+                            {% if show_descriptions %}
+                            <p class="text-muted d-none d-md-block">Confirm your order and receive a confirmation email.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+    position: relative;
+}
+
+.timeline-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+}
+
+/* Connecting line between timeline steps */
+@media (min-width: 768px) {
+    .timeline-step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background-color: #e9ecef;
+        z-index: 0;
+    }
+    
+    /* Fix for the correct positioning of the line */
+    .timeline-step:not(:last-child)::after {
+        left: calc(50% + 20px);  /* 50% plus half the width of the timeline icon */
+        width: calc(100% - 40px); /* Adjust width to account for the icons */
+    }
+}
+
+.timeline-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #e9ecef;
+    color: #6c757d;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    position: relative;
+    z-index: 1; /* Ensure icons appear above the line */
+}
+
+.timeline-step.active .timeline-icon {
+    background-color: #28a745;
+    color: white;
+}
+
+.timeline-step.completed .timeline-icon {
+    background-color: #28a745;
+    color: white;
+}
+
+.timeline-content {
+    padding: 0 15px;
+}
+
+.timeline-content h6 {
+    margin-bottom: 5px;
+}
+
+.timeline-content p {
+    font-size: 0.9rem;
+}
+</style>

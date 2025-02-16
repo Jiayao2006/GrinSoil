@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 import os
 from werkzeug.utils import secure_filename
+import jwt
+import uuid
+import json
+import traceback
+
 
 class User:
     def __init__(self, username: str, password: str, phone: str, role: str, email: str = None):
@@ -230,6 +235,7 @@ class UserManager:
         """Authenticate user login"""
         user = self.get_user(username)
         if user and user.verify_password(password):
+            print(f"Authenticated user: {user.username}, role: {user.role}")  # Debug print
             return user
         return None
 
@@ -1029,34 +1035,43 @@ class ListedProductManager:
             self.__file_manager.rollback()
             return False
 
-    def get_product(self, product_id: str, owner: str) -> Optional[ListedProduct]:
-        """Get a specific product"""
+    def get_product(self, product_id: str, name: str = None) -> Optional[ListedProduct]:
+        """Get a specific product with more robust lookup"""
         try:
             with self.__get_db() as db:
-                if ('farmer_products' not in db or 
-                    owner not in db['farmer_products'] or 
-                    product_id not in db['farmer_products'][owner]):
-                    return None
+                # First, try direct lookup by product ID
+                for farmer_products in db.get('farmer_products', {}).values():
+                    if product_id in farmer_products:
+                        data = farmer_products[product_id]
+                        
+                        # Optional name verification if provided
+                        if name and data.get('name') != name:
+                            print(f"WARNING: Product name mismatch. Expected {name}, Found {data.get('name')}")
+                        
+                        return ListedProduct(
+                            id=data['id'],
+                            name=data['name'],
+                            expiry_date=data['expiry_date'],
+                            owner=data['owner'],
+                            category=data['category'],
+                            price=data['price'],
+                            quantity=data['quantity'],
+                            unit=data['unit'],
+                            harvest_date=data['harvest_date'],
+                            description=data['description'],
+                            additional_info=data.get('additional_info'),
+                            images=data.get('images', []),
+                            listing_status=data.get('listing_status', 'active')
+                        )
                 
-                data = db['farmer_products'][owner][product_id]
-                return ListedProduct(
-                    id=data['id'],
-                    name=data['name'],
-                    expiry_date=data['expiry_date'],
-                    owner=data['owner'],
-                    category=data['category'],
-                    price=data['price'],
-                    quantity=data['quantity'],
-                    unit=data['unit'],
-                    harvest_date=data['harvest_date'],
-                    description=data['description'],
-                    additional_info=data.get('additional_info'),
-                    images=data.get('images', []),
-                    listing_status=data.get('listing_status', 'active')
-                )
-                
+                # If no product found
+                print(f"ERROR: Product not found. ID: {product_id}, Name: {name}")
+                return None
+                    
         except Exception as e:
             print(f"Error getting product: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_farmer_products(self, owner: str) -> List[ListedProduct]:
@@ -1226,7 +1241,8 @@ class CartItem:
         self.unit = unit
         self.subtotal = price * quantity
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Convert CartItem to dictionary for storage"""
         return {
             'product_id': self.product_id,
             'quantity': self.quantity,
@@ -1235,13 +1251,34 @@ class CartItem:
             'unit': self.unit,
             'subtotal': self.subtotal
         }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'CartItem':
+        """Create CartItem from dictionary"""
+        item = cls(
+            product_id=data['product_id'],
+            quantity=data['quantity'],
+            name=data['name'],
+            price=data['price'],
+            unit=data['unit']
+        )
+        # Recalculate subtotal to ensure accuracy
+        item.subtotal = item.price * item.quantity
+        return item
+
+
+# In models.py, update the Cart class:
 
 class Cart:
     def __init__(self):
         self.items = {}  # Dictionary of product_id: CartItem
         self.total = 0.0
 
+    def __len__(self):
+        return len(self.items)
+
     def add_item(self, product_id: str, quantity: int, name: str, price: float, unit: str):
+        """Add or update item in cart"""
         if product_id in self.items:
             self.items[product_id].quantity += quantity
             self.items[product_id].subtotal = self.items[product_id].quantity * price
@@ -1250,11 +1287,13 @@ class Cart:
         self._update_total()
 
     def remove_item(self, product_id: str):
+        """Remove item from cart"""
         if product_id in self.items:
             del self.items[product_id]
             self._update_total()
 
     def update_quantity(self, product_id: str, quantity: int):
+        """Update item quantity"""
         if product_id in self.items:
             if quantity <= 0:
                 self.remove_item(product_id)
@@ -1263,14 +1302,49 @@ class Cart:
                 self.items[product_id].subtotal = quantity * self.items[product_id].price
                 self._update_total()
 
+    def get_items(self) -> list:
+        """Get list of cart items"""
+        return list(self.items.values())
+
     def _update_total(self):
+        """Update cart total"""
         self.total = sum(item.subtotal for item in self.items.values())
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Convert cart to dictionary for storage"""
         return {
-            'items': {pid: item.to_dict() for pid, item in self.items.items()},
-            'total': self.total
+            'items': {str(pid): item.to_dict() for pid, item in self.items.items()},
+            'total': float(self.total)
         }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Cart':
+        """Create cart from dictionary with robust error handling"""
+        cart = cls()
+        try:
+            # Ensure data is a dictionary with 'items' key
+            if not isinstance(data, dict) or 'items' not in data:
+                return cart
+            
+            # Safely convert items
+            for pid, item_data in data['items'].items():
+                try:
+                    cart.items[pid] = CartItem.from_dict(item_data)
+                except Exception as e:
+                    print(f"Error converting cart item {pid}: {e}")
+                    continue
+            
+            # Set total, defaulting to 0 if not present or invalid
+            cart.total = float(data.get('total', 0))
+            
+            # Recalculate total to ensure accuracy
+            cart._update_total()
+            
+            return cart
+        
+        except Exception as e:
+            print(f"Error creating cart from dictionary: {e}")
+            return cls()
 
 class CartManager:
     def __init__(self):
@@ -1280,11 +1354,206 @@ class CartManager:
         return shelve.open(self.__db_name, writeback=True)
     
     def get_cart(self, user_id: str) -> Cart:
-        with self.__get_db() as db:
-            if user_id not in db:
-                db[user_id] = Cart()
-            return db[user_id]
-    
+        """Get user's cart, creating only if not exists"""
+        try:
+            with self.__get_db() as db:
+                # Check if cart exists for this user
+                if user_id not in db:
+                    cart = Cart()
+                    db[user_id] = cart.to_dict()
+                    return cart
+                
+                # Retrieve existing cart
+                cart_data = db[user_id]
+                
+                # Validate cart data structure
+                if not isinstance(cart_data, dict):
+                    cart = Cart()
+                    db[user_id] = cart.to_dict()
+                    return cart
+                
+                # Ensure cart data has required keys
+                if 'items' not in cart_data or 'total' not in cart_data:
+                    cart = Cart()
+                    db[user_id] = cart.to_dict()
+                    return cart
+                
+                # Create Cart from stored dictionary
+                cart = Cart.from_dict(cart_data)
+                return cart
+            
+        except Exception as e:
+            print(f"Error getting cart for {user_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            return Cart()
+
     def update_cart(self, user_id: str, cart: Cart):
-        with self.__get_db() as db:
-            db[user_id] = cart
+        """Update cart for a specific user"""
+        try:
+            with self.__get_db() as db:
+                # Store cart as dictionary
+                db[user_id] = cart.to_dict()
+                db.sync()  # Ensure data is written to disk
+        except Exception as e:
+            print(f"Error updating cart: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def clear_cart(self, user_id: str):
+        """Clear user's cart"""
+        try:
+            with self.__get_db() as db:
+                if user_id in db:
+                    del db[user_id]
+                    db.sync()  # Ensure deletion is written to disk
+        except Exception as e:
+            print(f"Error clearing cart: {e}")
+            import traceback
+            traceback.print_exc()
+
+class OrderSummary:
+    def __init__(self, order_id: str, username: str, items: list, total: float, 
+                 shipping_info: dict):
+        self.order_id = order_id
+        self.username = username
+        self.items = items
+        self.total = total
+        self.shipping_info = shipping_info
+        self.created_at = datetime.now()
+
+    def to_dict(self) -> dict:
+        return {
+            'order_id': self.order_id,
+            'username': self.username,
+            'items': self.items,
+            'total': self.total,
+            'shipping_info': self.shipping_info,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    
+class OrderManager:
+    def __init__(self):
+        self.__db_name = 'orders_db'
+    
+    def __get_db(self):
+        return shelve.open(self.__db_name, writeback=True)
+    
+    def create_order(self, username: str, cart_items: dict, shipping_info: dict, status: str = 'pending') -> str:
+        """Create a new order and transfer cart items"""
+        try:
+            # Generate a more readable order ID
+            order_id = f"ORD-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+            
+            # Convert cart items to serializable format
+            items_data = []
+            for item in cart_items.values():
+                items_data.append({
+                    'product_id': item.product_id,
+                    'quantity': item.quantity,
+                    'name': item.name,
+                    'price': item.price,
+                    'unit': item.unit,
+                    'subtotal': item.subtotal
+                })
+            
+            order_data = {
+                'order_id': order_id,
+                'username': username,
+                'items': items_data,
+                'total': sum(item['subtotal'] for item in items_data),
+                'shipping_info': shipping_info,
+                'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'status': status
+            }
+            
+            with self.__get_db() as db:
+                # Ensure 'orders' dictionary exists
+                if 'orders' not in db:
+                    db['orders'] = {}
+                
+                # Store the order
+                db['orders'][order_id] = order_data
+                
+                # Debug print
+                print(f"OrderManager: Created order {order_id} for user {username}")
+                print(f"Order details: {order_data}")
+                
+                return order_id
+                
+        except Exception as e:
+            print(f"Error creating order: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def finalize_order(self, order_id: str, cart_manager: 'CartManager', username: str) -> bool:
+        """Finalize order and clear cart"""
+        try:
+            with self.__get_db() as db:
+                if 'orders' not in db or order_id not in db['orders']:
+                    return False
+                
+                # Update order status to completed
+                order_data = db['orders'][order_id]
+                order_data['status'] = OrderStatus.COMPLETED
+                order_data['completed_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Update the order in the database
+                db['orders'][order_id] = order_data
+                
+                # Clear the user's cart
+                cart_manager.clear_cart(username)
+                
+                return True
+                
+        except Exception as e:
+            print(f"Error finalizing order: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def update_order_status(self, order_id: str, status: str) -> bool:
+        """Update the status of an order"""
+        try:
+            with self.__get_db() as db:
+                if 'orders' not in db or order_id not in db['orders']:
+                    return False
+                
+                # Validate status
+                if not OrderStatus.is_valid_status(status):
+                    raise ValueError(f"Invalid status: {status}")
+                
+                # Update order status
+                order_data = db['orders'][order_id]
+                order_data['status'] = status
+                order_data['status_updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Update the order in the database
+                db['orders'][order_id] = order_data
+                
+                return True
+                
+        except Exception as e:
+            print(f"Error updating order status: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+
+class OrderStatus:
+    """Enum for order statuses"""
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    CANCELLED = 'cancelled'
+    
+    @classmethod
+    def get_all_statuses(cls):
+        return [cls.PENDING, cls.PROCESSING, cls.COMPLETED, cls.CANCELLED]
+        
+    @classmethod
+    def is_valid_status(cls, status):
+        return status in cls.get_all_statuses()
+    
+    
