@@ -2,47 +2,131 @@
 
 {% block title %}My Reviews{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Orders container styling */
+    .reviews-container {
+        padding: 1.5rem;
+    }
+    
+    /* Page header */
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Review card styling */
+    .review-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-bottom: 1.5rem;
+        background: white;
+    }
+    .review-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .review-card-body {
+        padding: 1rem;
+    }
+    .review-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    /* Add review form */
+    .add-review-form {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* No reviews message */
+    .no-reviews {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    .no-reviews i {
+        font-size: 3rem;
+        color: #aaa;
+        margin-bottom: 1rem;
+    }
+    .no-reviews p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h2>My Reviews</h2>
+<div class="reviews-container">
+    <!-- Page header -->
+    <div class="page-header">
+        <h2 class="h4 mb-0">My Reviews</h2>
+    </div>
+
+    <!-- Add Review Form -->
+    <div class="add-review-form card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-3">Write a New Review</h4>
+            <form action="{{ url_for('add_review') }}" method="POST">
+                <div class="mb-3">
+                    <textarea class="form-control" id="content" name="content" rows="4" 
+                              placeholder="Share your thoughts..." required></textarea>
                 </div>
-                <div class="card-body">
-                    <!-- Rest of the reviews content -->
-                    <!-- Add Review Form -->
-                    <form action="{{ url_for('add_review') }}" method="POST">
-                        <div class="mb-3">
-                            <label for="content" class="form-label">New Review</label>
-                            <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Submit Review</button>
-                    </form>
-                    
-                    <hr>
-                    
-                    <!-- List of User's Reviews -->
-                    {% for review in reviews %}
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <p class="card-text">{{ review.content }}</p>
-                            <p class="text-muted small">
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reviews Grid -->
+    <div class="row">
+        {% if reviews %}
+            {% for review in reviews %}
+            <div class="col-12">
+                <div class="review-card card">
+                    <div class="review-card-body">
+                        <p class="card-text">{{ review.content }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
                                 Posted on: {{ review.created_at }}
                                 {% if review.updated_at %}
                                 (Edited: {{ review.updated_at }})
                                 {% endif %}
-                            </p>
-                            <button class="btn btn-sm btn-primary" onclick="editReview('{{ review.id }}', '{{ review.content }}')">Edit</button>
-                            <a href="{{ url_for('delete_review', review_id=review.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                            </small>
+                            <div class="review-actions">
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="editReview('{{ review.id }}', '{{ review.content }}')">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                <a href="{{ url_for('delete_review', review_id=review.id) }}" 
+                                   class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('Are you sure?')">
+                                    <i class="fas fa-trash-alt me-1"></i>Delete
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
-        </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="no-reviews">
+                    <i class="fas fa-comment-slash"></i>
+                    <p>No reviews yet. Be the first to share your thoughts!</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -51,16 +135,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" style="color: black;">Edit Review</h5>
+                <h5 class="modal-title">Edit Review</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="editReviewForm" method="POST">
                     <div class="mb-3">
-                        <label for="editContent" class="form-label" style="color: black;">Review Content</label>
-                        <textarea class="form-control" id="editContent" name="content" rows="3" required></textarea>
+                        <textarea class="form-control" id="editContent" name="content" rows="4" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
                 </form>
             </div>
         </div>

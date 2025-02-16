@@ -22,6 +22,12 @@
                 {% endif %}
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'farmer_orders' %}active{% endif %}" 
+               href="{{ url_for('farmer_orders') }}">
+                <i class="fas fa-clipboard-list me-2"></i> Orders
+            </a>
+        </li>
     {% else %}
         <li class="nav-item">
             <a class="nav-link text-light {% if request.endpoint == 'customer_dashboard' %}active{% endif %}" 

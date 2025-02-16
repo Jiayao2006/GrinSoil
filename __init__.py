@@ -1832,6 +1832,13 @@ def complete_checkout():
             flash(error_message, 'danger')
             return redirect(url_for('checkout'))
         
+        # After validating stock, determine farmers involved
+        farmers = set()
+        for item in cart.items.values():
+            product = listed_product_manager.get_product(item.product_id)
+            if product:
+                farmers.add(product.owner)
+        
         # Create order with initial processing status
         # Convert cart items to a format that can be easily stored and retrieved
         cart_items_for_order = [
@@ -1847,11 +1854,13 @@ def complete_checkout():
         # Debugging print to check cart items
         print("Cart Items Before Clearing:", cart.items)
         # Create order with initial processing status
+        # Create order with farmer_statuses
         order_id = order_manager.create_order(
             username=session['username'],
-            cart_items=cart_items_for_order,  # Use the converted format
+            cart_items=cart_items_for_order,
             shipping_info=shipping_info,
-            status=OrderStatus.PROCESSING
+            status=OrderStatus.PROCESSING,
+            farmer_statuses={farmer: OrderStatus.PROCESSING for farmer in farmers}
         )
         
         # Debug: Check order creation
@@ -1945,6 +1954,168 @@ def get_latest_order():
         import traceback
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': 'Failed to retrieve latest order'}), 500
+
+"""farmers to view and update orders"""
+@app.route('/farmer/orders')
+@login_required
+def farmer_orders():
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    
+    try:
+        farmer_username = session['username']
+        status_filter = request.args.get('status', 'all')
+        orders = []
+        
+        # Open both databases
+        with shelve.open('orders_db', 'r') as orders_db, \
+             shelve.open('users_db', 'r') as users_db:
+            
+            # Get all orders
+            all_orders = orders_db.get('orders', {})
+            
+            print("DEBUG: Total orders in database:", len(all_orders))
+            
+            for order_id, order_data in all_orders.items():
+                # Extensive type and content checking
+                if not isinstance(order_data, dict):
+                    print(f"Skipping invalid order data for {order_id}: {type(order_data)}")
+                    continue
+                
+                # Check farmer statuses
+                farmer_statuses = order_data.get('farmer_statuses', {})
+                if farmer_username not in farmer_statuses:
+                    continue
+                
+                # Validate and process items
+                raw_items = order_data.get('items', [])
+                if not isinstance(raw_items, list):
+                    print(f"Invalid items type for order {order_id}: {type(raw_items)}")
+                    continue
+                
+                # Filter items belonging to this farmer
+                farmer_items = []
+                for item in raw_items:
+                    if not isinstance(item, dict):
+                        print(f"Invalid item in order {order_id}: {type(item)}")
+                        continue
+                    
+                    try:
+                        product = listed_product_manager.get_product(item.get('product_id'))
+                        if product and product.owner == farmer_username:
+                            farmer_items.append({
+                                'name': item.get('name', 'Unknown'),
+                                'quantity': item.get('quantity', 0),
+                                'unit': item.get('unit', ''),
+                                'price': item.get('price', 0),
+                                'subtotal': item.get('subtotal', 0)
+                            })
+                    except Exception as e:
+                        print(f"Error processing item in order {order_id}: {e}")
+                
+                # Skip if no farmer items
+                if not farmer_items:
+                    continue
+                
+                # Prepare customer details
+                customer_username = order_data.get('username', 'Unknown')
+                customer_details = users_db.get(customer_username, {})
+                shipping_info = order_data.get('shipping_info', {})
+                
+                # Create order object
+                if not isinstance(farmer_items, list):
+                    farmer_items = list(farmer_items) if hasattr(farmer_items, '__iter__') else []
+                order = {
+                    'order_id': order_id,
+                    'items': farmer_items,  # Ensure this is a list
+                    'status': farmer_statuses.get(farmer_username, 'Unknown'),
+                    'customer': customer_username,
+                    'customer_details': {
+                        'full_name': customer_details.get('username', customer_username),
+                        'phone': shipping_info.get('phone', 'N/A'),
+                        'address': ', '.join(filter(bool, [
+                            shipping_info.get('street', ''),
+                            shipping_info.get('city', ''),
+                            shipping_info.get('postal_code', '')
+                        ]))
+                    },
+                    'created_at': order_data.get('created_at', 'N/A'),
+                    'total': sum(item.get('subtotal', 0) for item in farmer_items),
+                }
+                
+                # Debug print
+                print(f"Order {order_id} processed:")
+                print(f"Items: {order['items']}")
+                print(f"Type of items: {type(order['items'])}")
+                
+                # Apply status filter
+                if status_filter == 'all' or order['status'] == status_filter:
+                    orders.append(order)
+        
+        # Final debug information
+        print(f"Total farmer orders found: {len(orders)}")
+        
+        return render_template('farmer_orders.html', 
+                              orders=orders, 
+                              status_filter=status_filter)
+    
+    except Exception as e:
+        print(f"Error in farmer_orders: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('Error loading orders', 'danger')
+        return redirect(url_for('farmer_dashboard'))
+
+@app.route('/farmer/update_order_status/<order_id>', methods=['POST'])
+@login_required
+def update_farmer_order_status(order_id):
+    new_status = request.form.get('status')
+    if new_status not in ['Processing', 'Completed']:
+        flash('Invalid status', 'danger')
+        return redirect(url_for('farmer_orders'))
+    
+    success = order_manager.update_farmer_order_status(
+        order_id, 
+        session['username'], 
+        new_status
+    )
+    if success:
+        flash('Status updated', 'success')
+    else:
+        flash('Update failed', 'danger')
+    return redirect(url_for('farmer_orders'))
+
+
+@app.route('/farmer/delete_order/<order_id>')
+@login_required
+def delete_farmer_order(order_id):
+    if session.get('role') != 'Farmer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+    
+    try:
+        with shelve.open('orders_db', 'c') as db:
+            if 'orders' in db and order_id in db['orders']:
+                # Check if the order belongs to this farmer's products
+                order_data = db['orders'][order_id]
+                farmer_username = session['username']
+                
+                # Check if farmer is associated with this order
+                if farmer_username in order_data.get('farmer_statuses', {}):
+                    del db['orders'][order_id]
+                    flash('Order deleted successfully', 'success')
+                else:
+                    flash('Unauthorized to delete this order', 'danger')
+            else:
+                flash('Order not found', 'danger')
+        
+        return redirect(url_for('farmer_orders'))
+    
+    except Exception as e:
+        print(f"Error deleting order: {str(e)}")
+        flash('Error deleting order', 'danger')
+        return redirect(url_for('farmer_orders'))
 
 if __name__ == '__main__':
     init_admin()

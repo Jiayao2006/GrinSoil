@@ -1439,7 +1439,21 @@ class OrderManager:
     def __get_db(self):
         return shelve.open(self.__db_name, writeback=True)
     
-    def create_order(self, username: str, cart_items: list, shipping_info: dict, status: str = 'pending') -> str:
+    def update_farmer_order_status(self, order_id: str, farmer_username: str, status: str) -> bool:
+        try:
+            with self.__get_db() as db:
+                if 'orders' not in db or order_id not in db['orders']:
+                    return False
+                order_data = db['orders'][order_id]
+                order_data['farmer_statuses'][farmer_username] = status
+                db['orders'][order_id] = order_data
+                return True
+        except Exception as e:
+            print(f"Error updating farmer status: {str(e)}")
+            return False
+    
+    def create_order(self, username: str, cart_items: list, shipping_info: dict, 
+                    status: str, farmer_statuses: dict) -> str:
         """Create a new order and transfer cart items"""
         try:
             # Generate a more readable order ID
@@ -1452,7 +1466,8 @@ class OrderManager:
                 'total': sum(item['subtotal'] for item in cart_items),
                 'shipping_info': shipping_info,
                 'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'status': status
+                'status': status,
+                'farmer_statuses': farmer_statuses,
             }
             
             with self.__get_db() as db:

@@ -1,151 +1,222 @@
-{# notifications.html #}
 {% extends "dashboard_base.html" %}
 
 {% block title %}Notifications{% endblock %}
 
-{% block content %}
-<div class="container-fluid px-4">
-    <div class="card shadow" style="max-width: 1400px; margin: 1rem auto;">
-        <div class="card-header bg-info text-white">
-            <h2 class="mb-0">Important Updates</h2>
-        </div>
-        <div class="card-body p-4">
-            <!-- Unread Notifications Section -->
-            <h4>Unread Notifications</h4>
-            <div id="unread-notifications">
-                {% for notification in notifications %}
-                {% if session['username'] not in notification.read_by %}
-                <div class="alert alert-info mb-3 notification-item" id="notification-{{ notification.id }}">
-                    <div class="d-flex align-items-start">
-                        <div class="form-check me-3">
-                            <input type="checkbox" class="form-check-input read-checkbox"
-                                data-notification-id="{{ notification.id }}" {% if session['username'] in
-                                notification.read_by %}checked{% endif %}>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h5 class="alert-heading">{{ notification.title }}</h5>
-                            <p>{{ notification.content }}</p>
-                            <hr>
-                            <small class="text-muted">Posted: {{ notification.created_at }}</small>
-                            {% if notification.updated_at %}
-                            <br>
-                            <small class="text-muted">Updated: {{ notification.updated_at }}</small>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
+{% block extra_css %}
+<style>
+    /* Notifications container styling */
+    .notifications-container {
+        padding: 1.5rem;
+    }
+    
+    /* Page header */
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Filter pills */
+    .filter-pills {
+        margin-bottom: 1.5rem;
+    }
+    .filter-pills .btn {
+        border-radius: 20px;
+        padding: 0.4rem 1.2rem;
+        margin-right: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .filter-pills .btn.active {
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Notification card styling */
+    .notification-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-bottom: 1.5rem;
+        background: white;
+    }
+    .notification-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .notification-card-body {
+        padding: 1rem;
+    }
+    
+    /* No notifications message */
+    .no-notifications {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    .no-notifications i {
+        font-size: 3rem;
+        color: #aaa;
+        margin-bottom: 1rem;
+    }
+    .no-notifications p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}
 
-            <!-- Read Notifications Section -->
-            <h4 class="mt-5">Read Notifications</h4>
-            <div id="read-notifications">
-                {% for notification in notifications %}
-                {% if session['username'] in notification.read_by %}
-                <div class="alert alert-secondary mb-3 notification-item" id="notification-{{ notification.id }}">
-                    <div class="d-flex align-items-start">
-                        <div class="form-check me-3">
-                            <input type="checkbox" class="form-check-input read-checkbox"
-                                data-notification-id="{{ notification.id }}" {% if session['username'] in
-                                notification.read_by %}checked{% endif %}>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h5 class="alert-heading">{{ notification.title }}</h5>
-                            <p>{{ notification.content }}</p>
-                            <hr>
-                            <small class="text-muted">Posted: {{ notification.created_at }}</small>
-                            {% if notification.updated_at %}
-                            <br>
-                            <small class="text-muted">Updated: {{ notification.updated_at }}</small>
-                            {% endif %}
+{% block content %}
+<div class="notifications-container">
+    <!-- Page header -->
+    <div class="page-header">
+        <h2 class="h4 mb-0">Notifications</h2>
+    </div>
+
+    <!-- Notification Status Filters -->
+    <div class="filter-pills mb-4">
+        <button class="btn btn-outline-secondary me-2 filter-btn active" data-filter="all">All</button>
+        <button class="btn btn-outline-info me-2 filter-btn" data-filter="unread">Unread</button>
+        <button class="btn btn-outline-success filter-btn" data-filter="read">Read</button>
+    </div>
+
+    <!-- Notifications Grid -->
+    <div class="row">
+        {% if notifications %}
+            {% for notification in notifications %}
+            <div class="col-12 notification-item" 
+                 data-status="{% if session['username'] in notification.read_by %}read{% else %}unread{% endif %}">
+                <div class="notification-card card mb-3">
+                    <div class="notification-card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-2">{{ notification.title }}</h5>
+                                <p class="text-muted mb-2">{{ notification.content }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Posted: {{ notification.created_at }}
+                                        {% if notification.updated_at %}
+                                            <br>Updated: {{ notification.updated_at }}
+                                        {% endif %}
+                                    </small>
+                                    <span class="badge {% if session['username'] not in notification.read_by %}bg-info{% else %}bg-secondary{% endif %}">
+                                        {{ 'Unread' if session['username'] not in notification.read_by else 'Read' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="form-check ms-3">
+                                <input type="checkbox" class="form-check-input read-checkbox"
+                                    data-notification-id="{{ notification.id }}" 
+                                    {% if session['username'] in notification.read_by %}checked{% endif %}>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {% endif %}
-                {% endfor %}
             </div>
-        </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="no-notifications">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No notifications at the moment</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-    const checkboxes = document.querySelectorAll('.read-checkbox');
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const notificationItems = document.querySelectorAll('.notification-item');
 
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', async function (event) {
-            try {
-                const notificationId = this.dataset.notificationId;
-                const notificationElement = document.getElementById(`notification-${notificationId}`);
-                const endpoint = this.checked ? 'mark-read' : 'mark-unread';
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Update active button
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
 
-                // Prevent default checkbox behavior until we know the server request succeeded
-                event.preventDefault();
-
-                const response = await fetch(`/notification/${endpoint}/${notificationId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+                // Filter notifications
+                const filter = button.dataset.filter;
+                notificationItems.forEach(item => {
+                    if (filter === 'all' || item.dataset.status === filter) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
                     }
                 });
+            });
+        });
 
-                const data = await response.json();
+        // Checkbox event listeners
+        const checkboxes = document.querySelectorAll('.read-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', async function (event) {
+                try {
+                    const notificationId = this.dataset.notificationId;
+                    const notificationItem = this.closest('.notification-item');
+                    const badgeElement = notificationItem.querySelector('.badge');
+                    const endpoint = this.checked ? 'mark-read' : 'mark-unread';
 
-                if (data.success) {
-                    // Actually change the checkbox state
-                    this.checked = endpoint === 'mark-read';
-                    
-                    // Move notification to appropriate section
-                    const targetSection = this.checked ?
-                        document.getElementById('read-notifications') :
-                        document.getElementById('unread-notifications');
+                    // Prevent default checkbox behavior until we know the server request succeeded
+                    event.preventDefault();
 
-                    // Update notification style
-                    notificationElement.classList.toggle('alert-info', !this.checked);
-                    notificationElement.classList.toggle('alert-secondary', this.checked);
+                    const response = await fetch(`/notification/${endpoint}/${notificationId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-                    // Move the notification
-                    if (targetSection && notificationElement) {
-                        targetSection.insertBefore(notificationElement, targetSection.firstChild);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Actually change the checkbox state
+                        this.checked = endpoint === 'mark-read';
+                        
+                        // Update status
+                        notificationItem.dataset.status = this.checked ? 'read' : 'unread';
+                        badgeElement.textContent = this.checked ? 'Read' : 'Unread';
+                        badgeElement.classList.toggle('bg-info', !this.checked);
+                        badgeElement.classList.toggle('bg-secondary', this.checked);
+
+                        // Update counter in notifications page
+                        if (data.counts) {
+                            updateNotificationCounters(data.counts);
+                        }
+                    } else {
+                        // Revert checkbox if request failed
+                        this.checked = !this.checked;
+                        console.error('Failed to update notification:', data.error);
+                        alert('Failed to update notification status. Please try again.');
                     }
-
-                    // Update counter in notifications page
-                    if (data.counts) {
-                        updateNotificationCounters(data.counts);
-                    }
-                } else {
-                    // Revert checkbox if request failed
+                } catch (error) {
+                    // Revert checkbox if error occurred
                     this.checked = !this.checked;
-                    console.error('Failed to update notification:', data.error);
-                    alert('Failed to update notification status. Please try again.');
+                    console.error('Error updating notification:', error);
+                    alert('An error occurred while updating the notification status. Please try again.');
                 }
-            } catch (error) {
-                // Revert checkbox if error occurred
-                this.checked = !this.checked;
-                console.error('Error updating notification:', error);
-                alert('An error occurred while updating the notification status. Please try again.');
-            }
+            });
         });
     });
-});
 
-function updateNotificationCounters(counts) {
-    try {
-        if (counts) {
-            const unreadBadge = document.querySelector('.badge.bg-danger');
-            const totalBadge = document.querySelector('.badge.bg-secondary');
+    function updateNotificationCounters(counts) {
+        try {
+            if (counts) {
+                const unreadBadge = document.querySelector('.badge.bg-danger');
+                const totalBadge = document.querySelector('.badge.bg-secondary');
 
-            if (unreadBadge) {
-                unreadBadge.textContent = counts.unread || '0';
+                if (unreadBadge) {
+                    unreadBadge.textContent = counts.unread || '0';
+                }
+                if (totalBadge) {
+                    totalBadge.textContent = counts.total || '0';
+                }
             }
-            if (totalBadge) {
-                totalBadge.textContent = counts.total || '0';
-            }
+        } catch (error) {
+            console.error('Error updating notification counters:', error);
         }
-    } catch (error) {
-        console.error('Error updating notification counters:', error);
     }
-}
 </script>
 {% endblock %}

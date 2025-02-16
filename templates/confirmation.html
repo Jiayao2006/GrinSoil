@@ -36,27 +36,27 @@
                     <!-- Order Summary (Initially Hidden) -->
                     <div id="orderSummary" class="text-start" style="display: none;">
                         <h5 class="border-bottom pb-2 mb-3">Order Summary</h5>
-    
-    <!-- Improved handling of items -->
-    {% if order.items %}
-        {% if order.items is iterable %}
-            {% for item in order.items %}
-            <div class="d-flex justify-content-between small mb-2">
-                <span>{{ item.name }} × {{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</span>
-                <span>${{ "%.2f"|format(item.get('subtotal', 0)) }}</span>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="alert alert-warning">
-                Order items are in an unexpected format.
-            </div>
-        {% endif %}
-    {% else %}
-        <div class="alert alert-warning">
-            No items found in this order.
-        </div>
-    {% endif %}
-                    
+
+                        <!-- Improved handling of items -->
+                        {% if order.items %}
+                        {% if order.items is iterable %}
+                        {% for item in order.items %}
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span>{{ item.name }} × {{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</span>
+                            <span>${{ "%.2f"|format(item.get('subtotal', 0)) }}</span>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-warning">
+                            Order items are in an unexpected format.
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No items found in this order.
+                        </div>
+                        {% endif %}
+
                         <!-- Subtotal and Total -->
                         <div class="d-flex justify-content-between mt-2 fw-bold">
                             <span>Subtotal</span>
@@ -73,17 +73,17 @@
                         </div>
                     </div>
 
-                        <!-- Download Button -->
-                        <div class="text-center mt-4">
-                            <button id="downloadPDF" class="btn btn-success">
-                                <i class="fas fa-download me-2"></i>Download Order Summary
-                            </button>
-                        </div>
+                    <!-- Download Button -->
+                    <div class="text-center mt-4">
+                        <button id="downloadPDF" class="btn btn-success">
+                            <i class="fas fa-download me-2"></i>Download Order Summary
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <style>
@@ -281,12 +281,12 @@
         try {
             // The order data is already available from the server
             const orderData = JSON.parse('{{ order|tojson|safe }}');
-            
+
             // Validate order data
             if (!orderData || !orderData.order_id) {
                 throw new Error('Invalid order data');
             }
-            
+
             generateOrderPDF(orderData);
         } catch (error) {
             console.error('Error processing order data:', error);
