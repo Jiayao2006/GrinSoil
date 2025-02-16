@@ -1498,73 +1498,103 @@ def inject_cart():
 @app.route('/shop')
 @login_required
 def shop():
-    """Show available products with search, sort, and filter options"""
-    """Show available products with search, sort, and filter options"""
     try:
-        # Get query parameters
-        search = request.args.get('search', '').lower()
-        sort_by = request.args.get('sort', 'name')
-        sort_order = request.args.get('order', 'asc')
-        category_filter = request.args.get('category', 'all')
+        # Extensive logging
+        print("SHOP ROUTE: Entering shop route")
+        print(f"Current session contents: {dict(session)}")
+        
+        # Verify username is in session
+        if 'username' not in session:
+            print("SHOP ROUTE: No username in session")
+            flash('Please log in to access the shop', 'danger')
+            return redirect(url_for('signup_login'))
+
+        username = session['username']
+        print(f"SHOP ROUTE: Accessing shop for user: {username}")
+
+        # Verify listed_product_manager exists
+        if not hasattr(app, 'listed_product_manager'):
+            app.listed_product_manager = ListedProductManager()
+        listed_product_manager = app.listed_product_manager
 
         # Get all products
         all_products = []
-        with listed_product_manager._ListedProductManager__get_db() as db:
-            if 'farmer_products' in db:
-                for farmer_products in db['farmer_products'].values():
-                    for product_data in farmer_products.values():
-                        if product_data.get('listing_status') == 'active' and product_data.get('quantity', 0) > 0:
-                            product = ListedProduct(
-                                id=product_data['id'],
-                                name=product_data['name'],
-                                expiry_date=product_data['expiry_date'],
-                                owner=product_data['owner'],
-                                category=product_data['category'],
-                                price=product_data['price'],
-                                quantity=product_data['quantity'],
-                                unit=product_data['unit'],
-                                harvest_date=product_data['harvest_date'],
-                                description=product_data['description'],
-                                additional_info=product_data.get('additional_info'),
-                                images=product_data.get('images', []),
-                                listing_status=product_data.get('listing_status', 'active')
-                            )
-                            all_products.append(product)
+        try:
+            with listed_product_manager._ListedProductManager__get_db() as db:
+                print(f"SHOP ROUTE: Database keys: {list(db.keys())}")
+                
+                if 'farmer_products' not in db:
+                    print("SHOP ROUTE: No farmer_products in database")
+                    return render_template('shop.html', 
+                                         products=[],
+                                         categories=[],
+                                         search='',
+                                         sort_by='name',
+                                         sort_order='asc',
+                                         category_filter='all')
 
-        # Apply search filter
-        if search:
-            search_lower = search.lower()
-            all_products = [p for p in all_products if search_lower in p.name.lower()]
+                for farmer_username, farmer_products in db['farmer_products'].items():
+                    for product_id, product_data in farmer_products.items():
+                        print(f"SHOP ROUTE: Processing product: {product_id}")
+                        
+                        # Additional validation
+                        if not all(key in product_data for key in 
+                                   ['id', 'name', 'expiry_date', 'owner', 'category', 
+                                    'price', 'quantity', 'unit', 'harvest_date', 'description']):
+                            print(f"SHOP ROUTE: Incomplete product data for {product_id}")
+                            continue
 
-        # Apply category filter
-        if category_filter != 'all':
-            all_products = [p for p in all_products if p.category == category_filter]
+                        if (product_data.get('listing_status') == 'active' and 
+                            product_data.get('quantity', 0) > 0):
+                            try:
+                                product = ListedProduct(
+                                    id=product_data['id'],
+                                    name=product_data['name'],
+                                    expiry_date=product_data['expiry_date'],
+                                    owner=product_data['owner'],
+                                    category=product_data['category'],
+                                    price=product_data['price'],
+                                    quantity=product_data['quantity'],
+                                    unit=product_data['unit'],
+                                    harvest_date=product_data['harvest_date'],
+                                    description=product_data['description'],
+                                    additional_info=product_data.get('additional_info', ''),
+                                    images=product_data.get('images', []),
+                                    listing_status=product_data.get('listing_status', 'active')
+                                )
+                                all_products.append(product)
+                            except Exception as product_error:
+                                print(f"SHOP ROUTE: Error processing product {product_id}: {product_error}")
+                                import traceback
+                                traceback.print_exc()
+                                continue
 
-        # Get unique categories for filter dropdown
+        except Exception as db_error:
+            print(f"SHOP ROUTE: Database error: {db_error}")
+            import traceback
+            traceback.print_exc()
+            flash('Error accessing product database', 'danger')
+            return redirect(url_for('customer_dashboard'))
+
+        print(f"SHOP ROUTE: Total products found: {len(all_products)}")
+
+        # Get unique categories
         categories = sorted(set(p.category for p in all_products))
-
-        # Apply sorting
-        if sort_by == 'name':
-            all_products.sort(key=lambda x: x.name.lower(), reverse=(sort_order == 'desc'))
-        elif sort_by == 'price':
-            all_products.sort(key=lambda x: x.price, reverse=(sort_order == 'desc'))
-        elif sort_by == 'date':
-            all_products.sort(key=lambda x: x.created_at, reverse=(sort_order == 'desc'))
-
-        # Get user's cart
-        cart = cart_manager.get_cart(session['username'])
+        print(f"SHOP ROUTE: Categories found: {categories}")
 
         return render_template('shop.html', 
                              products=all_products,
                              categories=categories,
-                             search=search,
-                             sort_by=sort_by,
-                             sort_order=sort_order,
-                             category_filter=category_filter)
+                             search='',
+                             sort_by='name',
+                             sort_order='asc',
+                             category_filter='all')
 
     except Exception as e:
-        print(f"Error in shop route: {str(e)}")
-        flash('Error loading products', 'danger')
+        print(f"SHOP ROUTE: CRITICAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('An unexpected error occurred. Please try again later.', 'danger')
         return redirect(url_for('customer_dashboard'))
 
 @app.route('/cart')
@@ -2248,6 +2278,7 @@ def customer_order_tracker():
         username = session['username']
         status_filter = request.args.get('status', 'all').lower()
         orders = []
+        unique_statuses = set()  # Collect unique farmer statuses
         
         # Open orders database and get all orders
         with shelve.open('orders_db', 'r') as orders_db:
@@ -2256,11 +2287,25 @@ def customer_order_tracker():
             # Filter orders for current user and format them
             for order_id, order_data in all_orders.items():
                 if order_data.get('username') == username:
-                    # Get order status
-                    order_status = order_data.get('status', 'processing').lower()
+                    # Get farmer statuses for this order
+                    farmer_statuses = order_data.get('farmer_statuses', {})
+                    
+                    # Collect unique statuses
+                    unique_statuses.update(farmer_statuses.values())
+                    
+                    # Determine order-level filter
+                    # Get maximum status (typically the most challenging status)
+                    status_priority = {
+                        'Processing': 1,
+                        'Completed': 2
+                    }
+                    max_status = max(
+                        farmer_statuses.values(), 
+                        key=lambda s: status_priority.get(s, 0)
+                    ) if farmer_statuses else 'Processing'
                     
                     # Apply status filter
-                    if status_filter != 'all' and order_status != status_filter:
+                    if status_filter != 'all' and status_filter not in [s.lower() for s in farmer_statuses.values()]:
                         continue
                     
                     # Format the order data
@@ -2276,8 +2321,8 @@ def customer_order_tracker():
                             'city': '',
                             'postal_code': ''
                         }),
-                        'status': order_status.capitalize(),
-                        'farmer_statuses': order_data.get('farmer_statuses', {})
+                        'farmer_statuses': farmer_statuses,
+                        'status': max_status
                     }
                     orders.append(formatted_order)
             
@@ -2289,7 +2334,8 @@ def customer_order_tracker():
         
         return render_template('customer_order_tracker.html', 
                              orders=orders,
-                             status_filter=status_filter)
+                             status_filter=status_filter,
+                             unique_statuses=list(unique_statuses))
         
     except Exception as e:
         print(f"Error in customer_order_tracker: {str(e)}")

@@ -182,36 +182,25 @@
         <p class="text-muted mb-0">Track your orders and their status</p>
     </div>
 
-    <!-- Filter pills -->
+    <!-- Filter pills based on unique farmer statuses -->
     <div class="filter-pills">
         <a href="{{ url_for('customer_order_tracker', status='all') }}"
             class="btn btn-light {% if status_filter == 'all' %}active{% endif %}">
             All Orders
         </a>
-        <a href="{{ url_for('customer_order_tracker', status='processing') }}"
-            class="btn btn-light {% if status_filter == 'processing' %}active{% endif %}">
-            <i class="fas fa-clock text-warning me-1"></i> Processing
-        </a>
-        <a href="{{ url_for('customer_order_tracker', status='completed') }}"
-            class="btn btn-light {% if status_filter == 'completed' %}active{% endif %}">
-            <i class="fas fa-check-circle text-success me-1"></i> Completed
-        </a>
-        <a href="{{ url_for('customer_order_tracker', status='cancelled') }}"
-            class="btn btn-light {% if status_filter == 'cancelled' %}active{% endif %}">
-            <i class="fas fa-times-circle text-danger me-1"></i> Cancelled
-        </a>
+        {% for status in unique_statuses %}
+            <a href="{{ url_for('customer_order_tracker', status=status.lower()) }}"
+                class="btn btn-light {% if status_filter == status.lower() %}active{% endif %}">
+                {{ status }}
+            </a>
+        {% endfor %}
     </div>
 
     <div class="row">
         {% if orders %}
             {% for order in orders %}
                 <div class="col-lg-6 mb-4">
-                    <div class="order-card position-relative">
-                        <!-- Order Status Badge -->
-                        <div class="order-status status-{{ order['status']|lower }}">
-                            {{ order['status'] }}
-                        </div>
-
+                    <div class="order-card">
                         <div class="order-card-header">
                             <span class="order-id">Order #{{ order['order_id'] }}</span>
                             <span class="order-date">{{ order['created_at'] }}</span>
@@ -228,7 +217,7 @@
                                     <div>{{ shipping['city'] }}, {{ shipping['postal_code'] }}</div>
                                 </div>
                             </div>
-
+    
                             <!-- Order Items -->
                             <div class="info-label">Items Ordered</div>
                             <ul class="items-list">
@@ -242,7 +231,7 @@
                                     </li>
                                 {% endfor %}
                             </ul>
-
+    
                             <!-- Farmer Statuses -->
                             {% for farmer, status in order['farmer_statuses'].items() %}
                                 <div class="farmer-status">
@@ -253,7 +242,7 @@
                                     </span>
                                 </div>
                             {% endfor %}
-
+    
                             <!-- Order Total -->
                             <div class="total-amount">
                                 Total: ${{ "%.2f"|format(order['total']) }}
@@ -262,7 +251,7 @@
                     </div>
                 </div>
             {% endfor %}
-            {% else %}
+        {% else %}
             <div class="col-12">
                 <div class="no-orders">
                     <i class="fas fa-shopping-cart mb-3"></i>

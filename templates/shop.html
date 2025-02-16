@@ -190,28 +190,7 @@
 
 {% block extra_js %}
 <script>
-    // Add this script to toggle button text and prevent other descriptions from expanding
-    document.getElementById('description{{ product.id }}').addEventListener('show.bs.collapse', function() {
-        const button = document.querySelector('[data-bs-target="#description{{ product.id }}"]');
-        button.textContent = 'Hide Description';
-        
-        // Close other open descriptions
-        document.querySelectorAll('.collapse.show').forEach(el => {
-            if (el.id !== this.id) {
-                const otherButton = document.querySelector(`[data-bs-target="#${el.id}"]`);
-                bootstrap.Collapse.getOrCreateInstance(el).hide();
-                otherButton.textContent = 'Show Description';
-                otherButton.setAttribute('aria-expanded', 'false');
-            }
-        });
-    });
-
-    document.getElementById('description{{ product.id }}').addEventListener('hide.bs.collapse', function() {
-        const button = document.querySelector('[data-bs-target="#description{{ product.id }}"]');
-        button.textContent = 'Show Description';
-    });
-
-    // Handle form submissions for filtering and sorting
+        // Handle form submissions for filtering and sorting
     document.addEventListener('DOMContentLoaded', function() {
         const filterForm = document.getElementById('filterForm');
         const formInputs = filterForm.querySelectorAll('select, input');
