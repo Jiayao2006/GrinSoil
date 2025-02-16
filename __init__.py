@@ -941,6 +941,7 @@ def notifications():
     """Modified notifications route with debug information"""
     try:
         user_role = session.get('role')
+        username = session.get('username')
         print(f"Getting notifications for role: {user_role}")
         
         # Debug: Print database contents
@@ -949,7 +950,10 @@ def notifications():
             for key in db:
                 print(f"Notification {key}:", db[key])
         
-        notifications = notification_manager.get_notifications_for_role(user_role)
+        notifications = notification_manager.get_notifications_for_role(
+            user_role, 
+            username=username if user_role == 'Farmer' else None
+        )
         print(f"Retrieved {len(notifications)} notifications")
         
         # Debug: Print each notification
@@ -1838,6 +1842,15 @@ def complete_checkout():
             product = listed_product_manager.get_product(item.product_id)
             if product:
                 farmers.add(product.owner)
+
+        # Create a notification for each involved farmer
+        for farmer_username in farmers:
+            notification_manager.create_notification(
+                title="New Order Received",
+                content=f"Customer {session['username']} has purchased your product.",
+                target_role='Farmer',
+                target_user=farmer_username  # Target specific farmer
+            )
         
         # Create order with initial processing status
         # Convert cart items to a format that can be easily stored and retrieved
@@ -2087,34 +2100,32 @@ def update_farmer_order_status(order_id):
     return redirect(url_for('farmer_orders'))
 
 
-@app.route('/farmer/delete_order/<order_id>')
+@app.route('/farmer/delete-order/<order_id>', methods=['POST'])
 @login_required
 def delete_farmer_order(order_id):
+    """Handle order deletion with proper validation and error handling"""
+    # Verify user is a farmer
     if session.get('role') != 'Farmer':
-        flash('Access denied', 'danger')
+        flash('Access denied. Only farmers can delete orders.', 'danger')
         return redirect(url_for('home'))
     
     try:
-        with shelve.open('orders_db', 'c') as db:
-            if 'orders' in db and order_id in db['orders']:
-                # Check if the order belongs to this farmer's products
-                order_data = db['orders'][order_id]
-                farmer_username = session['username']
-                
-                # Check if farmer is associated with this order
-                if farmer_username in order_data.get('farmer_statuses', {}):
-                    del db['orders'][order_id]
-                    flash('Order deleted successfully', 'success')
-                else:
-                    flash('Unauthorized to delete this order', 'danger')
-            else:
-                flash('Order not found', 'danger')
+        # Get username from session
+        farmer_username = session['username']
         
+        # Attempt to delete the order
+        if order_manager.delete_order(order_id, farmer_username):
+            flash('Order deleted successfully', 'success')
+        else:
+            flash('Failed to delete order. Please try again.', 'danger')
+            
         return redirect(url_for('farmer_orders'))
-    
+        
     except Exception as e:
-        print(f"Error deleting order: {str(e)}")
-        flash('Error deleting order', 'danger')
+        print(f"Critical error in delete_farmer_order: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while deleting the order', 'danger')
         return redirect(url_for('farmer_orders'))
 
 if __name__ == '__main__':

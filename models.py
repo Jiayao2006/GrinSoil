@@ -464,7 +464,7 @@ class ReviewManager:
             )
         
 class Notification:
-    def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, read_by: List[str] = None, updated_at: str = None):
+    def __init__(self, id: str, title: str, content: str, target_role: str, created_at: str, read_by: List[str] = None, updated_at: str = None, target_user: str = None):
         self.__id = id
         self.__title = title
         self.__content = content
@@ -472,6 +472,11 @@ class Notification:
         self.__created_at = created_at
         self.__updated_at = updated_at
         self.__read_by = read_by if read_by is not None else []
+        self.__target_user = target_user  # Add this line
+
+    @property
+    def target_user(self) -> str:
+        return self.__target_user
 
     @property
     def id(self) -> str:
@@ -520,7 +525,8 @@ class Notification:
             'target_role': self.__target_role,
             'created_at': self.__created_at,
             'updated_at': self.__updated_at,
-            'read_by': self.__read_by
+            'read_by': self.__read_by,
+            'target_user': self.__target_user,  # Add this line
         }
 
 
@@ -561,7 +567,7 @@ class NotificationManager:
     def __get_db(self):
         return shelve.open(self.__db_name, writeback=True)
     
-    def create_notification(self, title: str, content: str, target_role: str) -> str:
+    def create_notification(self, title: str, content: str, target_role: str, target_user: str = None) -> str:
         """Create a new notification with improved error handling and verification"""
         try:
             with self.__get_db() as db:
@@ -573,7 +579,8 @@ class NotificationManager:
                     'target_role': target_role,
                     'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'read_by': [],
-                    'updated_at': None
+                    'updated_at': None,
+                    'target_user': target_user,  # Add this line
                 }
                 
                 # Write notification
@@ -626,8 +633,7 @@ class NotificationManager:
             traceback.print_exc()
             return []
     
-    def get_notifications_for_role(self, role: str) -> List[Notification]:
-        """Get notifications for a specific role with improved error handling"""
+    def get_notifications_for_role(self, role: str, username: str = None) -> List[Notification]:
         try:
             with self.__get_db() as db:
                 notifications = []
@@ -635,25 +641,36 @@ class NotificationManager:
                     try:
                         data = db[key]
                         if data.get('target_role') in [role, 'All']:
-                            notifications.append(Notification(
-                                id=data['id'],
-                                title=data['title'],
-                                content=data['content'],
-                                target_role=data['target_role'],
-                                created_at=data['created_at'],
-                                read_by=data.get('read_by', []),
-                                updated_at=data.get('updated_at')
-                            ))
+                            target_user = data.get('target_user')
+                            # Check if notification targets a specific user
+                            if target_user:
+                                if username == target_user:
+                                    notifications.append(Notification(
+                                        id=data['id'],
+                                        title=data['title'],
+                                        content=data['content'],
+                                        target_role=data['target_role'],
+                                        created_at=data['created_at'],
+                                        read_by=data.get('read_by', []),
+                                        updated_at=data.get('updated_at'),
+                                        target_user=target_user
+                                    ))
+                            else:
+                                # General notification for all in the role
+                                notifications.append(Notification(
+                                    id=data['id'],
+                                    title=data['title'],
+                                    content=data['content'],
+                                    target_role=data['target_role'],
+                                    created_at=data['created_at'],
+                                    read_by=data.get('read_by', []),
+                                    updated_at=data.get('updated_at'),
+                                    target_user=None
+                                ))
                     except Exception as e:
-                        print(f"Error reading notification {key}: {str(e)}")
                         continue
-                
-                return sorted(notifications,
-                            key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"),
-                            reverse=True)
-                
+                return sorted(notifications, key=lambda x: x.created_at, reverse=True)
         except Exception as e:
-            print(f"Error getting notifications: {str(e)}")
             return []
     
     def mark_notification_as_read(self, notification_id: str, username: str) -> bool:
@@ -1438,6 +1455,47 @@ class OrderManager:
     
     def __get_db(self):
         return shelve.open(self.__db_name, writeback=True)
+    
+    def delete_order(self, order_id: str, farmer_username: str) -> bool:
+        """Delete an order with proper validation"""
+        try:
+            with self.__get_db() as db:
+                # Check if orders exist in db
+                if 'orders' not in db:
+                    print(f"No orders found in database")
+                    return False
+                
+                # Check if specific order exists
+                if order_id not in db['orders']:
+                    print(f"Order {order_id} not found")
+                    return False
+                
+                order_data = db['orders'][order_id]
+                
+                # Verify farmer has items in this order
+                farmer_has_items = False
+                for item in order_data.get('items', []):
+                    # Check if any items belong to this farmer
+                    if farmer_username in order_data.get('farmer_statuses', {}):
+                        farmer_has_items = True
+                        break
+                
+                if not farmer_has_items:
+                    print(f"Farmer {farmer_username} not authorized to delete order {order_id}")
+                    return False
+                
+                # Delete the order
+                del db['orders'][order_id]
+                db.sync()  # Ensure changes are written to disk
+                
+                print(f"Successfully deleted order {order_id}")
+                return True
+                
+        except Exception as e:
+            print(f"Error deleting order {order_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def update_farmer_order_status(self, order_id: str, farmer_username: str, status: str) -> bool:
         try:

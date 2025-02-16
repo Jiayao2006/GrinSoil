@@ -182,9 +182,9 @@
                         badgeElement.classList.toggle('bg-secondary', this.checked);
 
                         // Update counter in notifications page
-                        if (data.counts) {
-                            updateNotificationCounters(data.counts);
-                        }
+                        // if (data.counts) {
+                        //     updateNotificationCounters(data.counts);
+                        // }
                     } else {
                         // Revert checkbox if request failed
                         this.checked = !this.checked;
@@ -201,22 +201,22 @@
         });
     });
 
-    function updateNotificationCounters(counts) {
-        try {
-            if (counts) {
-                const unreadBadge = document.querySelector('.badge.bg-danger');
-                const totalBadge = document.querySelector('.badge.bg-secondary');
+    // function updateNotificationCounters(counts) {
+    //     try {
+    //         if (counts) {
+    //             const unreadBadge = document.querySelector('.badge.bg-danger');
+    //             const totalBadge = document.querySelector('.badge.bg-secondary');
 
-                if (unreadBadge) {
-                    unreadBadge.textContent = counts.unread || '0';
-                }
-                if (totalBadge) {
-                    totalBadge.textContent = counts.total || '0';
-                }
-            }
-        } catch (error) {
-            console.error('Error updating notification counters:', error);
-        }
-    }
+    //             if (unreadBadge) {
+    //                 unreadBadge.textContent = counts.unread || '0';
+    //             }
+    //             if (totalBadge) {
+    //                 totalBadge.textContent = counts.total || '0';
+    //             }
+    //         }
+    //     } catch (error) {
+    //         console.error('Error updating notification counters:', error);
+    //     }
+    // }
 </script>
 {% endblock %}
