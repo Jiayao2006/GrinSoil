@@ -1439,29 +1439,17 @@ class OrderManager:
     def __get_db(self):
         return shelve.open(self.__db_name, writeback=True)
     
-    def create_order(self, username: str, cart_items: dict, shipping_info: dict, status: str = 'pending') -> str:
+    def create_order(self, username: str, cart_items: list, shipping_info: dict, status: str = 'pending') -> str:
         """Create a new order and transfer cart items"""
         try:
             # Generate a more readable order ID
             order_id = f"ORD-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
             
-            # Convert cart items to serializable format
-            items_data = []
-            for item in cart_items.values():
-                items_data.append({
-                    'product_id': item.product_id,
-                    'quantity': item.quantity,
-                    'name': item.name,
-                    'price': item.price,
-                    'unit': item.unit,
-                    'subtotal': item.subtotal
-                })
-            
             order_data = {
                 'order_id': order_id,
                 'username': username,
-                'items': items_data,
-                'total': sum(item['subtotal'] for item in items_data),
+                'items': cart_items,  # Now this is already a list of dictionaries
+                'total': sum(item['subtotal'] for item in cart_items),
                 'shipping_info': shipping_info,
                 'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'status': status

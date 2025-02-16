@@ -1611,12 +1611,14 @@ def confirmation():
         # Get the latest order ID, first from session, then try to find a recent order
         order_id = session.get('latest_order_id')
         
-        print(f"CONFIRMATION: Attempting to retrieve order ID: {order_id}")
-        print(f"CONFIRMATION: Current session: {dict(session)}")
+        print("CONFIRMATION: DEBUG START")
+        print(f"Order ID from session: {order_id}")
+        print(f"Full session contents: {dict(session)}")
         
         # If no order ID in session, try to find the most recent order
         if not order_id:
             with shelve.open('orders_db', 'r') as db:
+                print("CONFIRMATION: No order ID in session, checking database")
                 if 'orders' in db:
                     # Find the most recent order for the user
                     recent_orders = [
@@ -1625,6 +1627,8 @@ def confirmation():
                         and order.get('status') in ['processing', 'completed']
                     ]
                     
+                    print(f"CONFIRMATION: Found {len(recent_orders)} recent orders")
+                    
                     if recent_orders:
                         # Sort by creation time and get the most recent
                         recent_orders.sort(
@@ -1632,7 +1636,7 @@ def confirmation():
                             reverse=True
                         )
                         order_id, order_data = recent_orders[0]
-                        print(f"CONFIRMATION: Found recent order: {order_id}")
+                        print(f"CONFIRMATION: Using recent order: {order_id}")
                     else:
                         print("CONFIRMATION: No recent orders found")
                         flash('No recent orders found', 'danger')
@@ -1663,16 +1667,12 @@ def confirmation():
             flash('Order is not in a valid state', 'danger')
             return redirect(url_for('shop'))
         
-        # Create notifications for farmers
-        for item in order_data['items']:
-            notification_manager.create_notification(
-                title="New Order Received",
-                content=f"New order received for {item['quantity']} {item['unit']} of {item['name']}",
-                target_role="Farmer"
-            )
+        # Extensive debugging for order data
+        print("CONFIRMATION: Full Order Data:")
+        print(json.dumps(order_data, indent=2))
         
-        # Clear the latest order ID from session
-        session.pop('latest_order_id', None)
+        print("CONFIRMATION: Order Items Type:", type(order_data.get('items')))
+        print("CONFIRMATION: Order Items Content:", order_data.get('items'))
         
         # Convert datetime string to a more readable format
         order_data['created_at_formatted'] = datetime.strptime(
@@ -1680,14 +1680,8 @@ def confirmation():
             "%Y-%m-%d %H:%M:%S"
         ).strftime("%B %d, %Y at %I:%M %p")
         
-        # Explicitly ensure items is a list
-        if not isinstance(order_data['items'], list):
-            order_data['items'] = list(order_data['items'])
-        
-        # Debug print to verify items
-        print("CONFIRMATION: Order Items:")
-        print(order_data['items'])
-        
+        # Clear session variables after processing
+        session.pop('latest_order_id', None)
         
         return render_template('confirmation.html', order=order_data)
                 
@@ -1839,9 +1833,23 @@ def complete_checkout():
             return redirect(url_for('checkout'))
         
         # Create order with initial processing status
+        # Convert cart items to a format that can be easily stored and retrieved
+        cart_items_for_order = [
+            {
+                'product_id': item.product_id,
+                'name': item.name,
+                'quantity': item.quantity,
+                'price': item.price,
+                'unit': item.unit,
+                'subtotal': item.subtotal
+            } for item in cart.items.values()
+        ]
+        # Debugging print to check cart items
+        print("Cart Items Before Clearing:", cart.items)
+        # Create order with initial processing status
         order_id = order_manager.create_order(
             username=session['username'],
-            cart_items=cart.items,
+            cart_items=cart_items_for_order,  # Use the converted format
             shipping_info=shipping_info,
             status=OrderStatus.PROCESSING
         )
@@ -1849,6 +1857,11 @@ def complete_checkout():
         # Debug: Check order creation
         print(f"CHECKOUT: Order created with ID {order_id}")
         
+        # Store the cart items in the session before clearing
+        session['last_order_items'] = {
+            pid: item.to_dict() for pid, item in cart.items.items()
+        }
+
         if not order_id:
             print("CHECKOUT: Failed to create order")
             flash('Failed to create order', 'danger')
@@ -1871,7 +1884,7 @@ def complete_checkout():
                 else:
                     print(f"CHECKOUT: Product not found during stock update - {item.name}")
             
-            # Mark order as completed and clear cart
+            # Mark order as completed
             if order_manager.finalize_order(order_id, cart_manager, session['username']):
                 print(f"CHECKOUT: Order {order_id} finalized successfully")
                 # Store order ID in session

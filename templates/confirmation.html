@@ -36,20 +36,26 @@
                     <!-- Order Summary (Initially Hidden) -->
                     <div id="orderSummary" class="text-start" style="display: none;">
                         <h5 class="border-bottom pb-2 mb-3">Order Summary</h5>
-                        
-                        <!-- Check if items exist and are iterable -->
-                        {% if order.items and order.items is iterable %}
-                            {% for item in order.items %}
-                            <div class="d-flex justify-content-between small mb-2">
-                                <span>{{ item.name }} × {{ item.quantity }} {{ item.unit }}</span>
-                                <span>${{ "%.2f"|format(item.subtotal) }}</span>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="alert alert-warning">
-                                No items found in this order.
-                            </div>
-                        {% endif %}
+    
+    <!-- Improved handling of items -->
+    {% if order.items %}
+        {% if order.items is iterable %}
+            {% for item in order.items %}
+            <div class="d-flex justify-content-between small mb-2">
+                <span>{{ item.name }} × {{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</span>
+                <span>${{ "%.2f"|format(item.get('subtotal', 0)) }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning">
+                Order items are in an unexpected format.
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-warning">
+            No items found in this order.
+        </div>
+    {% endif %}
                     
                         <!-- Subtotal and Total -->
                         <div class="d-flex justify-content-between mt-2 fw-bold">
