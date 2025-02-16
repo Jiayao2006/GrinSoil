@@ -536,36 +536,34 @@ from dashboard_utils import (
 @app.route('/farmer_dashboard')
 @login_required
 def farmer_dashboard():
-    """Farmer dashboard route with reduced complexity"""
     try:
-        # Get user data
-        user = user_manager.get_user(session['username'])
+        username = session['username']
+        user = user_manager.get_user(username)
         
-        # Validate access
-        is_valid, error = validate_dashboard_access(user, 'Farmer')
-        if not is_valid:
-            flash(error, 'danger')
+        if user.role != 'Farmer':
+            flash('Access denied', 'danger')
             return redirect(url_for('home'))
         
-        # Get dashboard data
-        stats = get_dashboard_stats(
+        # Get notifications with proper filtering
+        notification_counts = notification_manager.get_notification_counts('Farmer', username)
+        recent_notifications = notification_manager.get_recent_notifications('Farmer', username, limit=5)
+        
+        # Get other dashboard data
+        product_counts = product_manager.get_status_counts(username)
+        
+        return render_template(
+            'farmer_dashboard.html',
             user=user,
-            product_manager=product_manager,
-            notification_manager=notification_manager,
-            listed_product_manager=listed_product_manager
+            product_counts=product_counts,
+            notification_counts=notification_counts,
+            notifications=recent_notifications
         )
-        
-        # Get quick actions
-        actions = get_quick_actions('Farmer')
-        
-        # Format data for template
-        template_data = format_dashboard_data(user, stats, actions)
-        
-        return render_template('farmer_dashboard.html', **template_data)
         
     except Exception as e:
         print(f"Error in farmer_dashboard: {str(e)}")
-        flash('An error occurred while loading the dashboard', 'danger')
+        import traceback
+        traceback.print_exc()
+        flash('Error loading dashboard', 'danger')
         return redirect(url_for('home'))
 
 
@@ -2127,7 +2125,63 @@ def delete_farmer_order(order_id):
         traceback.print_exc()
         flash('An error occurred while deleting the order', 'danger')
         return redirect(url_for('farmer_orders'))
-
+    
+"""order tracker"""
+@app.route('/customer/order-tracker')
+@login_required
+def customer_order_tracker():
+    """Show customer's order history"""
+    if session.get('role') != 'Customer':
+        flash('Access denied', 'danger')
+        return redirect(url_for('home'))
+        
+    try:
+        username = session['username']
+        orders = []
+        
+        # Open orders database and get all orders
+        with shelve.open('orders_db', 'r') as orders_db:
+            all_orders = orders_db.get('orders', {})
+            
+            # Filter orders for current user and format them
+            for order_id, order_data in all_orders.items():
+                if order_data.get('username') == username:
+                    # Format the order data as a dictionary
+                    formatted_order = {
+                        'order_id': order_data.get('order_id', order_id),
+                        'created_at': order_data.get('created_at', ''),
+                        'items': list(order_data.get('items', [])),  # Ensure items is a list
+                        'total': float(order_data.get('total', 0)),
+                        'shipping_info': order_data.get('shipping_info', {
+                            'name': '',
+                            'phone': '',
+                            'address': '',
+                            'city': '',
+                            'postal_code': ''
+                        }),
+                        'status': order_data.get('status', 'Processing'),
+                        'farmer_statuses': order_data.get('farmer_statuses', {})
+                    }
+                    
+                    # Debug print the order structure
+                    print(f"Formatted order: {formatted_order}")
+                    orders.append(formatted_order)
+            
+            # Sort orders by date, most recent first
+            orders.sort(
+                key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"),
+                reverse=True
+            )
+        
+        return render_template('customer_order_tracker.html', orders=orders)
+        
+    except Exception as e:
+        print(f"Error in customer_order_tracker: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('Error loading order history', 'danger')
+        return redirect(url_for('customer_dashboard'))
+    
 if __name__ == '__main__':
     init_admin()
     if not init_notification_db():  # Add this check here too

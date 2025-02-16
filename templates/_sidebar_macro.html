@@ -50,6 +50,12 @@
                 {% endif %}
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link text-light {% if request.endpoint == 'customer_order_tracker' %}active{% endif %}" 
+               href="{{ url_for('customer_order_tracker') }}">
+                <i class="fas fa-shopping-cart me-2"></i> Order Tracker
+            </a>
+        </li>
     {% endif %}
 
     <!-- Common menu items -->
