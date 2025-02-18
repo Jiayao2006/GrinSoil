@@ -1,4 +1,5 @@
 // Enhanced form validation
+// Enhanced form validation
 class FormValidator {
     constructor(formId) {
         this.form = document.getElementById(formId);
@@ -13,12 +14,11 @@ class FormValidator {
             return;
         }
         
-        this.isPhoneVerified = false;
+        this.isEmailVerified = false;
         this.validationState = {
             username: false,
             password: false,
-            phone: false,
-            email: true, // Optional field starts as true
+            email: false,
             role: false
         };
         
@@ -34,14 +34,18 @@ class FormValidator {
         // Initialize all field validators
         this.initUsernameValidation();
         this.initPasswordValidation();
-        this.initPhoneValidation();
         this.initEmailValidation();
+        this.initPhoneValidation(); // Now optional
         this.initRoleValidation();
         this.initFormSubmission();
     }
 
     initUsernameValidation() {
         const usernameInput = document.getElementById('signup-username');
+        if (!usernameInput) {
+            console.error('Username input element not found!');
+            return;
+        }
 
         usernameInput.addEventListener('input', () => {
             const username = usernameInput.value.trim();
@@ -60,16 +64,18 @@ class FormValidator {
         const isValid = usernameRegex.test(username);
 
         const input = document.getElementById('signup-username');
+        if (!input) return false;
+        
         const feedback = input.nextElementSibling;
 
         if (isValid) {
             input.classList.add('is-valid');
             input.classList.remove('is-invalid');
-            feedback.textContent = 'Username is valid';
+            if (feedback) feedback.textContent = 'Username is valid';
         } else {
             input.classList.add('is-invalid');
             input.classList.remove('is-valid');
-            feedback.textContent = 'Username must start with a letter and contain only letters, numbers, and underscores';
+            if (feedback) feedback.textContent = 'Username must start with a letter and contain only letters, numbers, and underscores';
         }
 
         return isValid;
@@ -77,6 +83,11 @@ class FormValidator {
 
     initPasswordValidation() {
         const passwordInput = document.getElementById('signup-password');
+        if (!passwordInput) {
+            console.error('Password input element not found!');
+            return;
+        }
+        
         const lengthCheck = document.getElementById('length-check');
         const uppercaseCheck = document.getElementById('uppercase-check');
         const numberCheck = document.getElementById('number-check');
@@ -95,17 +106,23 @@ class FormValidator {
     }
 
     validatePassword(input, checks) {
+        if (!input) return false;
+        
         const password = input.value;
         const minLength = password.length >= 8;
         const hasUpperCase = /[A-Z]/.test(password);
         const hasNumber = /[0-9]/.test(password);
         const hasSpecialChar = /[!@#$%^&*]/.test(password);
 
-        // Update check marks with animation
-        checks.lengthCheck.innerHTML = `${minLength ? '✅' : '❌'} Minimum 8 characters`;
-        checks.uppercaseCheck.innerHTML = `${hasUpperCase ? '✅' : '❌'} At least one uppercase letter`;
-        checks.numberCheck.innerHTML = `${hasNumber ? '✅' : '❌'} At least one number`;
-        checks.specialCheck.innerHTML = `${hasSpecialChar ? '✅' : '❌'} At least one special character (!@#$%^&*)`;
+        // Update check marks if elements exist
+        if (checks.lengthCheck) 
+            checks.lengthCheck.innerHTML = `${minLength ? '✅' : '❌'} Minimum 8 characters`;
+        if (checks.uppercaseCheck)
+            checks.uppercaseCheck.innerHTML = `${hasUpperCase ? '✅' : '❌'} At least one uppercase letter`;
+        if (checks.numberCheck)
+            checks.numberCheck.innerHTML = `${hasNumber ? '✅' : '❌'} At least one number`;
+        if (checks.specialCheck)
+            checks.specialCheck.innerHTML = `${hasSpecialChar ? '✅' : '❌'} At least one special character (!@#$%^&*)`;
 
         const isValid = minLength && hasUpperCase && hasNumber && hasSpecialChar;
 
@@ -120,56 +137,41 @@ class FormValidator {
         return isValid;
     }
 
+    // Now phone validation is optional
     initPhoneValidation() {
         const phoneInput = document.getElementById('signup-phone');
-        const countryCode = document.getElementById('country-code');
-        const sendOtpBtn = document.getElementById('send-otp-btn');
-
-        // Phone patterns by country code
-        this.phonePatterns = {
-            '+65': /^[689]\d{7}$/, // Singapore
-            '+60': /^1\d{8,9}$/, // Malaysia
-            '+62': /^[1-9]\d{8,11}$/, // Indonesia
-            '+66': /^[689]\d{8}$/, // Thailand
-            '+84': /^[3-9]\d{8}$/, // Vietnam
-            '+63': /^[89]\d{9}$/ // Philippines
-        };
-
-        const validatePhone = () => {
-            const isValid = this.validatePhoneNumber(phoneInput, countryCode, sendOtpBtn);
-            this.validationState.phone = this.isPhoneVerified;
-            this.updateSubmitButton();
-        };
-
-        phoneInput.addEventListener('input', validatePhone);
-        countryCode.addEventListener('change', validatePhone);
+        if (!phoneInput) {
+            console.warn('Phone input element not found or not required');
+            return;
+        }
+        
+        // Phone is now optional, so we don't update validation state from here
+        phoneInput.addEventListener('input', () => {
+            this.validatePhoneNumber(phoneInput);
+            // No validation state update since it's optional
+        });
     }
 
-    validatePhoneNumber(phoneInput, countryCode, sendOtpBtn) {
-        const selectedCode = countryCode.value;
+    validatePhoneNumber(phoneInput) {
+        if (!phoneInput) return true; // Phone is optional
+        
         const phone = phoneInput.value.trim();
-
-        if (!selectedCode || !phone) {
-            sendOtpBtn.disabled = true;
-            return false;
+        // If empty, it's valid (since it's optional)
+        if (!phone) {
+            phoneInput.classList.remove('is-valid', 'is-invalid');
+            return true;
         }
-
-        const pattern = this.phonePatterns[selectedCode];
-        if (!pattern) {
-            sendOtpBtn.disabled = true;
-            return false;
-        }
-
-        const isValid = pattern.test(phone);
+        
+        // If not empty, validate format
+        const phoneRegex = /^\d{8,12}$/;
+        const isValid = phoneRegex.test(phone);
 
         if (isValid) {
             phoneInput.classList.add('is-valid');
             phoneInput.classList.remove('is-invalid');
-            sendOtpBtn.disabled = false;
         } else {
             phoneInput.classList.add('is-invalid');
             phoneInput.classList.remove('is-valid');
-            sendOtpBtn.disabled = true;
         }
 
         return isValid;
@@ -177,41 +179,51 @@ class FormValidator {
 
     initEmailValidation() {
         const emailInput = document.getElementById('signup-email');
+        if (!emailInput) {
+            console.error('Email input element not found!');
+            return;
+        }
 
         emailInput.addEventListener('input', () => {
             const isValid = this.validateEmail(emailInput);
-            this.validationState.email = isValid || !emailInput.value.trim();
+            this.validationState.email = isValid && this.isEmailVerified;
             this.updateSubmitButton();
+            
+            // Enable/disable verification button based on email validity
+            const verifyBtn = document.getElementById('send-otp-btn');
+            if (verifyBtn) {
+                verifyBtn.disabled = !isValid;
+            }
         });
     }
 
-    // Update the validateEmail method in the FormValidator class
     validateEmail(input) {
+        if (!input) return false;
+        
         const email = input.value.trim();
         const emailFormatCheck = document.getElementById('email-format-check');
         const emailDomainCheck = document.getElementById('email-domain-check');
-        const emailValidIcon = document.getElementById('email-valid-icon');
-        const emailInvalidIcon = document.getElementById('email-invalid-icon');
-
-        // If email is empty (optional field), consider it valid
+        
+        // If email is empty, it's invalid (required field)
         if (!email) {
-            input.classList.remove('is-valid', 'is-invalid');
-            emailValidIcon.classList.add('d-none');
-            emailInvalidIcon.classList.add('d-none');
-            emailFormatCheck.innerHTML = '❔ Valid email format (e.g., user@domain.com)';
-            emailDomainCheck.innerHTML = '❔ Valid domain extension (.com, .net, etc.)';
-            return true;
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            return false;
         }
 
         // Email format validation
         const formatRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const hasValidFormat = formatRegex.test(email);
-        emailFormatCheck.innerHTML = `${hasValidFormat ? '✅' : '❌'} Valid email format`;
+        if (emailFormatCheck) {
+            emailFormatCheck.innerHTML = `${hasValidFormat ? '✅' : '❌'} Valid email format`;
+        }
 
         // Domain validation
         const domainRegex = /\.[a-z]{2,}$/i;
         const hasValidDomain = domainRegex.test(email);
-        emailDomainCheck.innerHTML = `${hasValidDomain ? '✅' : '❌'} Valid domain extension`;
+        if (emailDomainCheck) {
+            emailDomainCheck.innerHTML = `${hasValidDomain ? '✅' : '❌'} Valid domain extension`;
+        }
 
         const isValid = hasValidFormat && hasValidDomain;
 
@@ -219,13 +231,9 @@ class FormValidator {
         if (isValid) {
             input.classList.add('is-valid');
             input.classList.remove('is-invalid');
-            emailValidIcon.classList.remove('d-none');
-            emailInvalidIcon.classList.add('d-none');
         } else {
             input.classList.add('is-invalid');
             input.classList.remove('is-valid');
-            emailValidIcon.classList.add('d-none');
-            emailInvalidIcon.classList.remove('d-none');
         }
 
         return isValid;
@@ -233,6 +241,10 @@ class FormValidator {
 
     initRoleValidation() {
         const roleInputs = document.querySelectorAll('input[name="role"]');
+        if (!roleInputs || roleInputs.length === 0) {
+            console.error('Role input elements not found!');
+            return;
+        }
 
         roleInputs.forEach(input => {
             input.addEventListener('change', () => {
@@ -244,64 +256,82 @@ class FormValidator {
 
     updateSubmitButton() {
         const isValid = Object.values(this.validationState).every(state => state === true);
-        this.submitButton.disabled = !isValid;
+        if (this.submitButton) {
+            this.submitButton.disabled = !isValid;
+        }
         
         // Debug logging
         console.log('Validation State:', {
             ...this.validationState,
-            isPhoneVerified: this.isPhoneVerified,
+            isEmailVerified: this.isEmailVerified,
             allValid: isValid
         });
     }
 
-    // Update the initFormSubmission method in the FormValidator class
     initFormSubmission() {
+        if (!this.form) return;
+        
         this.form.addEventListener('submit', (event) => {
             event.preventDefault();
 
             // Final validation check before submission
             const isValid = Object.values(this.validationState).every(state => state === true);
 
-            if (isValid && this.isPhoneVerified) {
-                // Update hidden phone input before submission
-                const fullPhone = document.getElementById('country-code').value +
-                    document.getElementById('signup-phone').value;
-
-                // Create hidden input if it doesn't exist
-                let fullPhoneInput = document.querySelector('input[name="full_phone"]');
-                if (!fullPhoneInput) {
-                    fullPhoneInput = document.createElement('input');
-                    fullPhoneInput.type = 'hidden';
-                    fullPhoneInput.name = 'full_phone';
-                    this.form.appendChild(fullPhoneInput);
+            if (isValid && this.isEmailVerified) {
+                // Get validated email
+                const emailInput = document.getElementById('signup-email');
+                const verifiedEmailInput = document.getElementById('verified_email');
+                
+                if (emailInput && verifiedEmailInput) {
+                    verifiedEmailInput.value = emailInput.value.trim();
                 }
-                fullPhoneInput.value = fullPhone;
+                
+                // Optional: Handle phone number if provided
+                const countryCode = document.getElementById('country-code');
+                const phoneInput = document.getElementById('signup-phone');
+                if (countryCode && phoneInput && countryCode.value && phoneInput.value) {
+                    const fullPhone = countryCode.value + phoneInput.value;
+                    
+                    // Create hidden input if it doesn't exist
+                    let fullPhoneInput = document.querySelector('input[name="full_phone"]');
+                    if (!fullPhoneInput) {
+                        fullPhoneInput = document.createElement('input');
+                        fullPhoneInput.type = 'hidden';
+                        fullPhoneInput.name = 'full_phone';
+                        this.form.appendChild(fullPhoneInput);
+                    }
+                    fullPhoneInput.value = fullPhone;
+                }
 
                 // Submit the form
                 console.log('Form is valid, submitting...');
-                event.preventDefault(); // Prevent default form submission
-                this.form.submit(); // Explicitly submit the form
+                this.form.submit();
             } else {
                 console.log('Form validation failed:', {
                     validationState: this.validationState,
-                    isPhoneVerified: this.isPhoneVerified
+                    isEmailVerified: this.isEmailVerified
                 });
-                alert('Please complete all required fields and verify your phone number.');
+                
+                if (!this.isEmailVerified) {
+                    alert('Please verify your email address before submitting.');
+                } else {
+                    alert('Please complete all required fields correctly.');
+                }
             }
         });
     }
 
     // Method to be called when OTP is verified
     verifyOTPSuccess() {
-        this.isPhoneVerified = true;
-        this.validationState.phone = true;
+        this.isEmailVerified = true;
+        this.validationState.email = true;
         this.updateSubmitButton();
     }
 
     // Method to be called when resending OTP
     resetOTPVerification() {
-        this.isPhoneVerified = false;
-        this.validationState.phone = false;
+        this.isEmailVerified = false;
+        this.validationState.email = false;
         this.updateSubmitButton();
     }
 }

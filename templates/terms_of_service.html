@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service{% endblock %}
+
+{% block extra_css %}
+<style>
+    .terms-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 3rem 2rem;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+    
+    .terms-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #eaeaea;
+    }
+    
+    .terms-header h1 {
+        color: #005b00;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .terms-header p {
+        color: #666;
+        font-size: 1.1rem;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .last-updated {
+        display: inline-block;
+        background-color: #f0f7f0;
+        padding: 0.4rem 1rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        color: #005b00;
+    }
+    
+    .terms-section {
+        margin-bottom: 2.5rem;
+    }
+    
+    .terms-section h2 {
+        color: #333;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .terms-section h3 {
+        font-size: 1.25rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: #444;
+    }
+    
+    .terms-section p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        color: #555;
+    }
+    
+    .terms-section ul {
+        padding-left: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .terms-section ul li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+    }
+    
+    .contact-info {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-top: 3rem;
+    }
+    
+    .contact-info h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    .contact-info p {
+        margin-bottom: 0.5rem;
+    }
+    
+    .contact-info a {
+        color: #005b00;
+        text-decoration: none;
+    }
+    
+    .contact-info a:hover {
+        text-decoration: underline;
+    }
+    
+    @media (max-width: 768px) {
+        .terms-container {
+            padding: 2rem 1.25rem;
+        }
+        
+        .terms-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+        }
+        
+        .terms-section h2 {
+            font-size: 1.4rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="terms-container">
+        <div class="terms-header">
+            <h1>Terms of Service</h1>
+            <p>Please read these terms and conditions carefully before using GrinSOIL's platform and services.</p>
+            <span class="last-updated">Last Updated: February 19, 2025</span>
+        </div>
+
+        <div class="terms-section">
+            <h2>1. Introduction</h2>
+            <p>Welcome to GrinSOIL. These Terms of Service ("Terms") govern your use of the GrinSOIL website, mobile application, and services (collectively, the "Platform"). By accessing or using our Platform, you agree to be bound by these Terms and our Privacy Policy.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>2. Definitions</h2>
+            <ul>
+                <li><strong>"GrinSOIL," "we," "our,"</strong> or <strong>"us"</strong> refers to GrinSOIL, Inc., its subsidiaries, affiliates, and partners.</li>
+                <li><strong>"User," "you,"</strong> or <strong>"your"</strong> refers to individuals who use our Platform as either Farmers or Customers.</li>
+                <li><strong>"Farmer"</strong> refers to users who list agricultural products for sale on our Platform.</li>
+                <li><strong>"Customer"</strong> refers to users who purchase products from Farmers through our Platform.</li>
+                <li><strong>"Content"</strong> refers to text, images, photos, audio, video, and all other forms of data or communication.</li>
+                <li><strong>"Product Listing"</strong> refers to agricultural products offered for sale by Farmers on our Platform.</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>3. Account Registration and Use</h2>
+            <h3>3.1 Account Creation</h3>
+            <p>To use certain features of the Platform, you must register for an account. When you register, you must provide accurate and complete information and promptly update this information if it changes.</p>
+            
+            <h3>3.2 Account Responsibilities</h3>
+            <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to notify GrinSOIL immediately of any unauthorized use of your account or any other breach of security.</p>
+            
+            <h3>3.3 Account Termination</h3>
+            <p>We reserve the right to suspend or terminate your account at any time for any reason, including but not limited to, violation of these Terms.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>4. Platform Rules and Guidelines</h2>
+            <h3>4.1 General Conduct</h3>
+            <p>You agree not to:</p>
+            <ul>
+                <li>Use the Platform in any way that violates any applicable laws or regulations</li>
+                <li>Impersonate any person or entity or falsely state or misrepresent your affiliation with a person or entity</li>
+                <li>Interfere with or disrupt the operation of the Platform or servers or networks connected to the Platform</li>
+                <li>Attempt to gain unauthorized access to any portion of the Platform</li>
+                <li>Use the Platform to transmit any malware, spyware, or other malicious code</li>
+                <li>Harvest or collect personally identifiable information from other users without their consent</li>
+                <li>Use automated means, including spiders, robots, crawlers, or data mining tools to download data from the Platform</li>
+            </ul>
+            
+            <h3>4.2 Content Guidelines</h3>
+            <p>You may not post Content that:</p>
+            <ul>
+                <li>Is false, misleading, or deceptive</li>
+                <li>Is defamatory, obscene, pornographic, vulgar, or offensive</li>
+                <li>Promotes discrimination, bigotry, racism, hatred, harassment, or harm against any individual or group</li>
+                <li>Violates any third party's rights, including intellectual property rights or rights of privacy or publicity</li>
+                <li>Constitutes unauthorized commercial communications (such as spam)</li>
+            </ul>
+            
+            <h3>4.3 Product Listing Guidelines</h3>
+            <p>Farmers must ensure that all Product Listings:</p>
+            <ul>
+                <li>Contain accurate and complete information about the products</li>
+                <li>Disclose all relevant information regarding the quality, harvest date, and expiry date of products</li>
+                <li>Comply with all applicable food safety regulations</li>
+                <li>Are priced fairly and accurately</li>
+                <li>Include only products that the Farmer has the legal right to sell</li>
+            </ul>
+        </div>
+
+        <div class="terms-section">
+            <h2>5. Transactions and Payments</h2>
+            <h3>5.1 Transaction Process</h3>
+            <p>GrinSOIL facilitates transactions between Farmers and Customers but is not a party to any transaction. Farmers and Customers are solely responsible for fulfilling their obligations in any transaction.</p>
+            
+            <h3>5.2 Fees and Payments</h3>
+            <p>GrinSOIL may charge fees for certain services, which will be disclosed before you use such services. All fees are non-refundable unless otherwise specified. Payment processing services are provided by third-party payment processors, and you agree to comply with their terms of service.</p>
+            
+            <h3>5.3 Taxes</h3>
+            <p>You are responsible for paying all taxes, duties, and other governmental charges associated with your use of the Platform.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>6. Intellectual Property Rights</h2>
+            <h3>6.1 GrinSOIL Content</h3>
+            <p>The Platform and its contents, including but not limited to text, graphics, logos, icons, images, software, and audio/video clips, are owned by GrinSOIL or its licensors and are protected by copyright, trademark, and other intellectual property laws.</p>
+            
+            <h3>6.2 License to Use</h3>
+            <p>GrinSOIL grants you a limited, non-exclusive, non-transferable, revocable license to access and use the Platform for its intended purposes, subject to these Terms.</p>
+            
+            <h3>6.3 User Content</h3>
+            <p>You retain ownership of any Content you submit to the Platform. By posting Content, you grant GrinSOIL a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, adapt, publish, translate, distribute, and display such Content in connection with the Platform.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>7. Disclaimers and Limitations of Liability</h2>
+            <h3>7.1 Disclaimer of Warranties</h3>
+            <p>THE PLATFORM IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.</p>
+            
+            <h3>7.2 Limitation of Liability</h3>
+            <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, GRINSOIL SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (A) YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE PLATFORM; (B) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE PLATFORM; OR (C) UNAUTHORIZED ACCESS, USE, OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>8. Indemnification</h2>
+            <p>You agree to indemnify, defend, and hold harmless GrinSOIL and its officers, directors, employees, agents, and affiliates from and against any and all claims, damages, obligations, losses, liabilities, costs, and expenses (including attorney's fees) arising from: (a) your use of the Platform; (b) your violation of these Terms; (c) your violation of any third party right, including without limitation any copyright, property, or privacy right; or (d) any claim that your Content caused damage to a third party.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>9. Modifications to Terms and Platform</h2>
+            <p>We reserve the right to modify these Terms at any time. We will provide notice of material changes by posting the amended Terms on the Platform. Your continued use of the Platform after such changes constitutes your acceptance of the amended Terms.</p>
+            <p>We also reserve the right to modify or discontinue, temporarily or permanently, the Platform or any features or portions thereof without prior notice.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>10. Governing Law and Dispute Resolution</h2>
+            <p>These Terms shall be governed by and construed in accordance with the laws of Singapore, without regard to its conflict of law provisions.</p>
+            <p>Any dispute arising out of or relating to these Terms shall first be attempted to be resolved through friendly consultation. If such dispute is not resolved within thirty (30) days after commencement of discussions, it shall be submitted to arbitration in Singapore in accordance with the rules of the Singapore International Arbitration Centre.</p>
+        </div>
+
+        <div class="terms-section">
+            <h2>11. General Provisions</h2>
+            <h3>11.1 Entire Agreement</h3>
+            <p>These Terms, together with the Privacy Policy, constitute the entire agreement between you and GrinSOIL regarding the Platform and supersede all prior agreements and understandings.</p>
+            
+            <h3>11.2 Severability</h3>
+            <p>If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that the Terms will otherwise remain in full force and effect.</p>
+            
+            <h3>11.3 No Waiver</h3>
+            <p>GrinSOIL's failure to enforce any right or provision of these Terms will not be considered a waiver of such right or provision.</p>
+            
+            <h3>11.4 Assignment</h3>
+            <p>You may not assign or transfer these Terms, by operation of law or otherwise, without GrinSOIL's prior written consent. GrinSOIL may assign these Terms without restriction.</p>
+        </div>
+
+        <div class="contact-info">
+            <h3>Contact Us</h3>
+            <p>If you have any questions about these Terms, please contact us at:</p>
+            <p>GrinSOIL, Inc.</p>
+            <p>Email: <a href="mailto:legal@grinsoil.com">legal@grinsoil.com</a></p>
+            <p>Address: 123 Agriculture Boulevard, Singapore 123456</p>
+            <p>Phone: +65 6123 4567</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

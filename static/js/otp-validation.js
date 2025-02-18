@@ -5,99 +5,127 @@ document.addEventListener('DOMContentLoaded', function() {
     const verifyOtpBtn = document.getElementById('verify-otp-btn');
     const resendOtpBtn = document.getElementById('resend-otp');
     const timerDisplay = document.getElementById('otp-timer');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
     let otpTimer;
     let resendTimer;
     let isVerified = false;
 
-    // Send OTP
-    document.getElementById('send-otp-btn').addEventListener('click', async function() {
-        const countryCode = document.getElementById('country-code');
-        const phoneInput = document.getElementById('signup-phone');
-        const fullPhone = countryCode.value + phoneInput.value;
-        
-        try {
-            const response = await fetch('/send-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: fullPhone })
-            });
+    // Send OTP via Email
+    if (sendOtpBtn) {
+        sendOtpBtn.addEventListener('click', async function() {
+            const emailInput = document.getElementById('signup-email');
+            const email = emailInput.value.trim();
             
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                otpSection.classList.remove('d-none');
-                if (!isVerified) {
-                    startOtpTimer();
-                }
-                phoneInput.disabled = true;
-                countryCode.disabled = true;
-                this.disabled = true;
-                
-                if (data.error_details) {
-                    console.warn('OTP sent with warning:', data.error_details);
-                }
-                alert('OTP has been sent successfully to your phone number');
-            } else {
-                alert(data.error || 'Failed to send OTP. Please try again.');
+            if (!email) {
+                alert('Please enter a valid email address');
+                return;
             }
-        } catch (error) {
-            console.error('Error in OTP request:', error);
-            alert('OTP has been sent despite connection error. Please check your phone.');
             
-            otpSection.classList.remove('d-none');
-            if (!isVerified) {
-                startOtpTimer();
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address');
+                return;
             }
-            phoneInput.disabled = true;
-            countryCode.disabled = true;
+            
+            // Disable button to prevent multiple clicks
             this.disabled = true;
-        }
-    });
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+            
+            try {
+                const response = await fetch('/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                const data = await response.json();
+                
+                // Re-enable button with appropriate text
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Verify Email';
+                
+                if (data.status === 'success') {
+                    otpSection.classList.remove('d-none');
+                    if (!isVerified) {
+                        startOtpTimer();
+                    }
+                    emailInput.disabled = true;
+                    this.disabled = true;
+                    
+                    alert('Verification code has been sent to your email');
+                } else {
+                    alert(data.message || 'Failed to send verification code. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error in verification code request:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Verify Email';
+                alert('Failed to send verification code. Please try again.');
+            }
+        });
+    }
 
     // Verify OTP
-    verifyOtpBtn.addEventListener('click', async function() {
-        const otp = otpInput.value;
-        if (!otp || otp.length !== 6) {
-            alert('Please enter a valid 6-digit OTP');
-            return;
-        }
-
-        const fullPhone = document.getElementById('country-code').value + 
-                         document.getElementById('signup-phone').value;
-        
-        try {
-            const response = await fetch('/verify-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    phone: fullPhone,
-                    otp: otp
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                isVerified = true;
-                clearInterval(otpTimer); // Stop the OTP timer
-                timerDisplay.textContent = 'Phone number verified!'; // Update timer display
-                otpInput.classList.add('is-valid');
-                otpInput.classList.remove('is-invalid');
-                verifyOtpBtn.disabled = true;
-                resendOtpBtn.classList.add('d-none'); // Hide resend button
-                document.getElementById('resend-countdown').classList.add('d-none'); // Hide countdown
-                window.formValidator.verifyOTPSuccess();
-                alert('Phone number verified successfully!');
-            } else {
-                otpInput.classList.add('is-invalid');
-                otpInput.classList.remove('is-valid');
-                alert(data.error || 'Invalid OTP');
+    if (verifyOtpBtn) {
+        verifyOtpBtn.addEventListener('click', async function() {
+            const otp = otpInput.value;
+            if (!otp || otp.length !== 6) {
+                alert('Please enter a valid 6-digit verification code');
+                return;
             }
-        } catch (error) {
-            console.error('Error verifying OTP:', error);
-            alert('Error verifying OTP');
-        }
-    });
+            
+            const email = document.getElementById('signup-email').value.trim();
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
+            
+            try {
+                const response = await fetch('/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: email,
+                        otp: otp
+                    })
+                });
+                
+                const data = await response.json();
+                
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Verify';
+                
+                if (response.ok) {
+                    isVerified = true;
+                    clearInterval(otpTimer);
+                    timerDisplay.textContent = 'Email verified!';
+                    timerDisplay.className = 'text-success fw-bold';
+                    otpInput.classList.add('is-valid');
+                    otpInput.classList.remove('is-invalid');
+                    verifyOtpBtn.disabled = true;
+                    resendOtpBtn.classList.add('d-none');
+                    document.getElementById('resend-countdown')?.classList.add('d-none');
+                    
+                    // Add verified email to hidden input
+                    const verifiedEmailInput = document.getElementById('verified_email');
+                    if (verifiedEmailInput) {
+                        verifiedEmailInput.value = email;
+                    }
+                    
+                    window.formValidator.verifyOTPSuccess();
+                    alert('Email verified successfully!');
+                } else {
+                    otpInput.classList.add('is-invalid');
+                    otpInput.classList.remove('is-valid');
+                    alert(data.error || 'Invalid verification code');
+                }
+            } catch (error) {
+                console.error('Error verifying code:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Verify';
+                alert('Error verifying code. Please try again.');
+            }
+        });
+    }
 
     // Timer functions
     function startOtpTimer() {
@@ -114,13 +142,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;
-            timerDisplay.textContent = `OTP expires in: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            timerDisplay.textContent = `Code expires in: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             
             if (timeLeft <= 0) {
                 clearInterval(otpTimer);
                 otpSection.classList.add('d-none');
-                document.getElementById('signup-phone').disabled = false;
-                document.getElementById('country-code').disabled = false;
+                document.getElementById('signup-email').disabled = false;
                 document.getElementById('send-otp-btn').disabled = false;
                 window.formValidator.resetOTPVerification();
             }
@@ -137,6 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let cooldown = 30; // 30 seconds cooldown
         const resendBtn = document.getElementById('resend-otp');
         const countdownDisplay = document.getElementById('resend-countdown');
+        
+        if (!resendBtn || !countdownDisplay) return;
         
         resendBtn.classList.add('d-none');
         countdownDisplay.classList.remove('d-none');
@@ -162,9 +191,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Resend OTP
-    resendOtpBtn.addEventListener('click', function() {
-        if (!isVerified) {
-            document.getElementById('send-otp-btn').click();
-        }
-    });
+    if (resendOtpBtn) {
+        resendOtpBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!isVerified) {
+                const sendBtn = document.getElementById('send-otp-btn');
+                if (sendBtn) {
+                    sendBtn.click();
+                }
+            }
+        });
+    }
 });

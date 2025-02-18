@@ -10,6 +10,7 @@ import jwt
 import uuid
 import json
 import traceback
+import random
 
 
 class User:
@@ -1912,3 +1913,70 @@ class OrderStatus:
         return status in cls.get_all_statuses()
     
     
+class OTPManager:
+    def __init__(self):
+        self.__db_name = 'otp_db'
+        
+    def __get_db(self):
+        return shelve.open(self.__db_name)
+    
+    def generate_otp(self):
+        """Generate a 6-digit OTP"""
+        return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    def store_otp(self, identifier, otp, is_email=False):
+        """Store OTP with metadata"""
+        with self.__get_db() as db:
+            db[identifier] = {
+                'otp': otp,
+                'expiry': datetime.now() + timedelta(minutes=3),
+                'attempts': 0,
+                'verified': False,
+                'last_sent': datetime.now(),
+                'is_email': is_email
+            }
+    
+    def verify_otp(self, identifier, otp):
+        """Verify OTP and handle attempts"""
+        with self.__get_db() as db:
+            if identifier not in db:
+                return False, "No OTP found for this identifier"
+            
+            otp_data = db[identifier]
+            
+            # Check if OTP has expired
+            if datetime.now() > otp_data['expiry']:
+                del db[identifier]
+                return False, "OTP has expired"
+            
+            # Check attempt limit
+            if otp_data['attempts'] >= 3:
+                del db[identifier]
+                return False, "Too many failed attempts. Please request a new OTP"
+            
+            # Verify OTP
+            if otp_data['otp'] != otp:
+                otp_data['attempts'] += 1
+                db[identifier] = otp_data
+                remaining_attempts = 3 - otp_data['attempts']
+                return False, f"Invalid OTP. {remaining_attempts} attempts remaining"
+            
+            # Mark as verified
+            otp_data['verified'] = True
+            db[identifier] = otp_data
+            return True, "OTP verified successfully"
+    
+    def can_resend_otp(self, identifier):
+        """Check if OTP can be resent (30s cooldown)"""
+        with self.__get_db() as db:
+            if identifier not in db:
+                return True
+            
+            otp_data = db[identifier]
+            cooldown_period = timedelta(seconds=30)
+            return datetime.now() - otp_data['last_sent'] > cooldown_period
+    
+    def is_verified(self, identifier):
+        """Check if identifier is verified"""
+        with self.__get_db() as db:
+            return identifier in db and db[identifier].get('verified', False)

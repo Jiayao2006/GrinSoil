@@ -2,110 +2,319 @@
 
 {% block extra_css %}
 <style>
+.snackbar {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 16px;
+    position: fixed;
+    z-index: 1050;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 30px;
+    font-size: 0.9rem;
+}
+
+.snackbar.show {
+    visibility: visible;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+@keyframes fadein {
+    from {bottom: 0; opacity: 0;}
+    to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadeout {
+    from {bottom: 30px; opacity: 1;}
+    to {bottom: 0; opacity: 0;}
+}
+
+.tooltip-icon {
+    cursor: help;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .tooltip-icon:hover {
+    opacity: 1;
+  }
+  
+  /* Bootstrap tooltip customization */
+  .tooltip {
+    --bs-tooltip-max-width: 250px;
+    --bs-tooltip-bg: #3c5c3c;
+    --bs-tooltip-color: white;
+    font-size: 0.85rem;
+  }
+  
+  /* Form field focus styles */
+  .form-control:focus {
+    border-color: #005b00;
+    box-shadow: 0 0 0 0.25rem rgba(0, 91, 0, 0.15);
+  }
+  
+  .form-control::placeholder {
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+  
+  /* Show email validation check when valid */
+  input[type="email"]:valid ~ #email-validation-check {
+    display: block !important;
+  }
     .auth-container {
-        min-height: calc(100vh - 200px);
-        padding: 40px 0;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: calc(100vh - 100px);
+        padding: 50px 0;
+        background-color: #f7f9fb;
+        background-image: url('../static/images/auth-background.jpg'); /* Placeholder for background image */
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .auth-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.85);
     }
 
     .auth-card {
         background: white;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         overflow: hidden;
-        max-width: 1000px;
+        max-width: 1100px;
         margin: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .auth-row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .auth-image-container {
+        flex: 0 0 45%;
+        background-color: #005b00;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        min-height: 600px;
+        background-image: url('../static/images/auth-side-image.jpg'); /* Placeholder for side image */
+        background-size: cover;
+        background-position: center;
+        color: white;
+        text-align: center;
+        padding: 30px;
+    }
+
+    .auth-image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(0, 91, 0, 0.85) 0%, rgba(35, 120, 35, 0.8) 100%);
+    }
+
+    .auth-image-content {
+        position: relative;
+        z-index: 2;
+        max-width: 80%;
+    }
+
+    .auth-logo {
+        margin-bottom: 25px;
+        width: 120px;
+        height: auto;
+    }
+
+    .auth-image-content h2 {
+        font-size: 2.2rem;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    .auth-image-content p {
+        font-size: 1rem;
+        margin-bottom: 25px;
+        opacity: 0.9;
+        line-height: 1.6;
+    }
+
+    .auth-features {
+        text-align: left;
+        margin: 25px 0;
+    }
+
+    .auth-feature-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .auth-feature-icon {
+        flex: 0 0 30px;
+        font-size: 1.1rem;
+        margin-right: 15px;
+        margin-top: 3px;
+    }
+
+    .auth-feature-text {
+        flex: 1;
+    }
+
+    .auth-form-container {
+        flex: 0 0 55%;
+        padding: 40px 50px;
     }
 
     .auth-header {
-        background: #198754;
-        padding: 20px;
-        color: white;
-        text-align: center;
         margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .auth-header h3 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .auth-header p {
+        color: #666;
     }
 
     .nav-tabs {
         border: none;
         justify-content: center;
         margin-bottom: 30px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
     }
 
     .nav-tabs .nav-link {
         border: none;
-        color: #6c757d;
+        color: #555;
         font-weight: 500;
-        padding: 12px 30px;
-        border-radius: 25px;
-        margin: 0 10px;
+        padding: 10px 25px;
+        border-radius: 5px;
+        margin: 0 5px;
         transition: all 0.3s ease;
     }
 
     .nav-tabs .nav-link.active {
-        background: #198754;
+        background: #005b00;
         color: white;
     }
 
     .nav-tabs .nav-link:hover:not(.active) {
-        background: #e9ecef;
+        background: #f0f5f0;
     }
 
     .form-label {
         font-weight: 500;
-        color: #495057;
+        color: #444;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
     }
 
     .form-control {
-        border-radius: 8px;
-        padding: 12px;
-        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 12px 15px;
+        border: 1px solid #dce0e5;
         transition: all 0.3s ease;
+        font-size: 0.95rem;
     }
 
     .form-control:focus {
-        border-color: #198754;
-        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+        border-color: #005b00;
+        box-shadow: 0 0 0 0.2rem rgba(0, 91, 0, 0.15);
+    }
+
+    .form-control::placeholder {
+        color: #aaa;
+        font-size: 0.9rem;
     }
 
     .input-group {
-        border-radius: 8px;
+        border-radius: 6px;
         overflow: hidden;
     }
 
     .input-group-text {
         background: #f8f9fa;
-        border: 1px solid #ced4da;
+        border: 1px solid #dce0e5;
+        color: #666;
     }
 
-    .btn-primary, .btn-success {
-        padding: 12px 30px;
-        border-radius: 25px;
+    .btn-auth {
+        padding: 12px 25px;
+        border-radius: 6px;
         font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
         transition: all 0.3s ease;
+        background-color: #005b00;
+        border: none;
+        color: white;
+    }
+
+    .btn-auth:hover {
+        background-color: #004500;
+        transform: translateY(-1px);
+    }
+
+    .btn-auth:active {
+        transform: translateY(0);
     }
 
     .password-requirements {
-        background: #f8f9fa;
+        background: #f8f9fb;
         padding: 15px;
-        border-radius: 8px;
+        border-radius: 6px;
         margin-top: 10px;
+        border-left: 3px solid #005b00;
     }
 
     .password-requirements div {
-        margin-bottom: 5px;
+        margin-bottom: 7px;
         transition: color 0.3s ease;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .password-requirements i {
+        width: 18px;
+    }
+
+    .email-requirements {
+        margin-top: 8px;
+    }
+
+    .email-requirements div {
+        font-size: 0.85rem;
+        color: #777;
+        margin-bottom: 5px;
     }
 
     .form-check {
-        margin: 10px 0;
+        margin: 15px 0;
     }
 
     .form-check-input:checked {
-        background-color: #198754;
-        border-color: #198754;
+        background-color: #005b00;
+        border-color: #005b00;
     }
 
     .otp-section {
@@ -113,50 +322,117 @@
         padding: 20px;
         border-radius: 8px;
         margin: 20px 0;
+        border: 1px solid #e5e8ec;
     }
 
     #otp-input {
-        letter-spacing: 5px;
+        letter-spacing: 8px;
         font-size: 1.2rem;
         text-align: center;
+        font-weight: 600;
     }
 
-    .social-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #f8f9fa;
-        color: #6c757d;
-        margin: 0 5px;
-        transition: all 0.3s ease;
-    }
-
-    .social-link:hover {
-        background: #198754;
-        color: white;
-    }
-
-    .divider {
+    .social-divider {
         display: flex;
         align-items: center;
         text-align: center;
-        margin: 20px 0;
+        margin: 25px 0;
     }
 
-    .divider::before,
-    .divider::after {
+    .social-divider::before,
+    .social-divider::after {
         content: '';
         flex: 1;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid #dce0e5;
     }
 
-    .divider span {
-        padding: 0 10px;
-        color: #6c757d;
-        background: white;
+    .social-divider span {
+        padding: 0 15px;
+        color: #777;
+        font-size: 0.9rem;
+    }
+
+    .social-login {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .social-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 45px;
+        height: 45px;
+        border-radius: 6px;
+        background: #f5f7f9;
+        color: #444;
+        border: 1px solid #dce0e5;
+        transition: all 0.3s ease;
+    }
+
+    .social-btn:hover {
+        background: #005b00;
+        color: white;
+        border-color: #005b00;
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .auth-footer a {
+        color: #005b00;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .form-floating label {
+        padding: 1rem 0.75rem;
+    }
+
+    .form-floating > .form-control {
+        padding: 1rem 0.75rem;
+        height: 58px;
+    }
+
+    .form-floating > .form-control-lg {
+        height: calc(3.5rem + 2px);
+    }
+
+    /* For smaller screens */
+    @media (max-width: 991px) {
+        .auth-image-container {
+            flex: 0 0 100%;
+            min-height: 300px;
+            order: 1;
+        }
+        
+        .auth-form-container {
+            flex: 0 0 100%;
+            order: 2;
+            padding: 30px;
+        }
+
+        .auth-card {
+            max-width: 600px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .auth-form-container {
+            padding: 20px;
+        }
+        
+        .auth-image-container {
+            min-height: 250px;
+        }
     }
 </style>
 {% endblock %}
@@ -165,185 +441,397 @@
 <div class="auth-container">
     <div class="container">
         <div class="auth-card">
-            <div class="auth-header">
-                <h2 class="mb-0">Welcome to GrinSOIL</h2>
-                <p class="mb-0">Connect with local farmers and fresh produce</p>
-            </div>
-
-            <div class="card-body px-4 px-md-5">
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-tabs" id="signupLoginTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" 
-                                type="button" role="tab" aria-controls="login" aria-selected="true">
-                            <i class="fas fa-sign-in-alt me-2"></i>Login
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" 
-                                type="button" role="tab" aria-controls="signup" aria-selected="false">
-                            <i class="fas fa-user-plus me-2"></i>Sign Up
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tabs Content -->
-                <div class="tab-content" id="signupLoginContent">
-                    <!-- Login Tab -->
-                    <div class="tab-pane fade show active" id="login" role="tabpanel" aria-labelledby="login-tab">
-                        <form action="/login" method="POST" class="mt-4">
-                            <div class="mb-4">
-                                <label for="login-username" class="form-label">Username <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" id="login-username" name="username" required>
+            <div class="auth-row">
+                <!-- Left Side Image and Content -->
+                <div class="auth-image-container">
+                    <div class="auth-image-overlay"></div>
+                    <div class="auth-image-content">
+                        <img src="../static/images/grinsoil-logo-white.png" alt="GrinSOIL Logo" class="auth-logo">
+                        <h2>Welcome to GrinSOIL</h2>
+                        <p>Connecting farmers and consumers for a sustainable agricultural future</p>
+                        
+                        <div class="auth-features">
+                            <div class="auth-feature-item">
+                                <div class="auth-feature-icon">
+                                    <i class="fas fa-seedling"></i>
+                                </div>
+                                <div class="auth-feature-text">
+                                    Access to fresh, locally grown produce
                                 </div>
                             </div>
-                            <div class="mb-4">
-                                <label for="login-password" class="form-label">Password <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control" id="login-password" name="password" required>
+                            <div class="auth-feature-item">
+                                <div class="auth-feature-icon">
+                                    <i class="fas fa-hand-holding-heart"></i>
+                                </div>
+                                <div class="auth-feature-text">
+                                    Support local farmers and sustainable agriculture
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100 mb-3">
-                                <i class="fas fa-sign-in-alt me-2"></i>Log In
-                            </button>
-                            <p class="text-center">
-                                Don't have an account? 
-                                <a href="#" class="text-success" onclick="event.preventDefault(); document.getElementById('signup-tab').click();">
-                                    Sign up here
-                                </a>
-                            </p>
-                        </form>
+                            <div class="auth-feature-item">
+                                <div class="auth-feature-icon">
+                                    <i class="fas fa-leaf"></i>
+                                </div>
+                                <div class="auth-feature-text">
+                                    Reduce food waste through smart tracking
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side Form Container -->
+                <div class="auth-form-container">
+                    <div class="auth-header">
+                        <h3 id="form-title">Sign In</h3>
+                        <p id="form-subtitle">Access your GrinSOIL account</p>
                     </div>
 
-                    <!-- Signup Tab -->
-                    <div class="tab-pane fade" id="signup" role="tabpanel" aria-labelledby="signup-tab">
-                        <form id="signupForm" action="/signup" method="POST" class="mt-4 needs-validation" novalidate>
-                            <!-- Username field -->
-                            <div class="mb-4">
-                                <label for="signup-username" class="form-label">Username <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" id="signup-username" name="username" required>
-                                    <div class="invalid-feedback">Please enter a username</div>
-                                </div>
-                            </div>
-
-                            <!-- Password field -->
-                            <div class="mb-4">
-                                <label for="signup-password" class="form-label">Password <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control" id="signup-password" name="password" required>
-                                    <div class="invalid-feedback">Please enter a valid password</div>
-                                </div>
-                                <div class="password-requirements mt-2">
-                                    <div id="length-check"><i class="fas fa-check-circle me-2"></i>Minimum 8 characters</div>
-                                    <div id="uppercase-check"><i class="fas fa-check-circle me-2"></i>One uppercase letter</div>
-                                    <div id="number-check"><i class="fas fa-check-circle me-2"></i>One number</div>
-                                    <div id="special-check"><i class="fas fa-check-circle me-2"></i>One special character</div>
-                                </div>
-                            </div>
-
-                            <!-- Phone Number field -->
-                            <div class="mb-4">
-                                <label for="phone-group" class="form-label">Phone Number <span class="text-danger">*</span></label>
-                                <div class="input-group" id="phone-group">
-                                    <select class="form-select" style="max-width: 150px;" id="country-code" name="country_code" required>
-                                        <option value="" selected disabled>Select Code</option>
-                                        <option value="+65">🇸🇬 +65</option>
-                                        <option value="+60">🇲🇾 +60</option>
-                                        <option value="+62">🇮🇩 +62</option>
-                                        <option value="+66">🇹🇭 +66</option>
-                                        <option value="+84">🇻🇳 +84</option>
-                                        <option value="+63">🇵🇭 +63</option>
-                                    </select>
-                                    <input type="tel" class="form-control" id="signup-phone" name="phone" required>
-                                    <button class="btn btn-outline-success" type="button" id="send-otp-btn" disabled>
-                                        <i class="fas fa-paper-plane me-2"></i>Send OTP
-                                    </button>
-                                </div>
-                                <div class="invalid-feedback">Please enter a valid phone number</div>
-                            </div>
-
-                            <!-- OTP Verification -->
-                            <div class="mb-4 d-none" id="otp-section">
-                                <label for="otp-input" class="form-label">Verify OTP <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-key"></i></span>
-                                    <input type="text" class="form-control" id="otp-input" maxlength="6" placeholder="Enter 6-digit OTP">
-                                    <button class="btn btn-outline-success" type="button" id="verify-otp-btn">
-                                        <i class="fas fa-check-circle me-2"></i>Verify
-                                    </button>
-                                </div>
-                                <div class="mt-2">
-                                    <span id="otp-timer" class="text-muted">OTP expires in: 03:00</span>
-                                    <a href="#" class="ms-2 d-none text-success" id="resend-otp">Resend OTP</a>
-                                    <span class="text-muted d-none" id="resend-countdown"></span>
-                                </div>
-                            </div>
-
-                            <!-- Email field -->
-                            <div class="mb-4">
-                                <label for="signup-email" class="form-label">Email (Optional)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                    <input type="email" class="form-control" id="signup-email" name="email">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-check text-success d-none" id="email-valid-icon"></i>
-                                        <i class="fas fa-times text-danger d-none" id="email-invalid-icon"></i>
-                                    </span>
-                                </div>
-                                <div class="email-requirements mt-2">
-                                    <div id="email-format-check" class="small">❔ Valid email format (e.g., user@domain.com)</div>
-                                    <div id="email-domain-check" class="small">❔ Valid domain extension (.com, .net, etc.)</div>
-                                </div>
-                                <div class="invalid-feedback">Please enter a valid email address</div>
-                            </div>
-
-                            <!-- Role Selection -->
-                            <div class="mb-4">
-                                <label class="form-label">Register As <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="role" id="role-farmer" value="Farmer" required>
-                                        <label class="form-check-label" for="role-farmer">
-                                            <i class="fas fa-tractor me-2"></i>Farmer
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="role" id="role-customer" value="Customer" required>
-                                        <label class="form-check-label" for="role-customer">
-                                            <i class="fas fa-shopping-basket me-2"></i>Customer
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="invalid-feedback">Please select a role</div>
-                            </div>
-
-                            <!-- Hidden field for full phone number -->
-                            <input type="hidden" id="full_phone" name="full_phone">
-
-                            <!-- Submit Button -->
-                            <button type="submit" class="btn btn-success w-100 mb-3" id="signup-submit" disabled>
-                                <i class="fas fa-user-plus me-2"></i>Create Account
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs" id="signupLoginTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" 
+                                    type="button" role="tab" aria-controls="login" aria-selected="true">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
                             </button>
-                            
-                            <p class="text-center">
-                                Already have an account? 
-                                <a href="#" class="text-success" onclick="event.preventDefault(); document.getElementById('login-tab').click();">
-                                    Login here
-                                </a>
-                            </p>
-                        </form>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" 
+                                    type="button" role="tab" aria-controls="signup" aria-selected="false">
+                                <i class="fas fa-user-plus me-2"></i>Sign Up
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tabs Content -->
+                    <div class="tab-content" id="signupLoginContent">
+                        <!-- Login Tab -->
+                        <div class="tab-pane fade show active" id="login" role="tabpanel" aria-labelledby="login-tab">
+                            <form action="/login" method="POST" class="mt-4">
+                                <div class="mb-4 form-floating">
+                                    <input type="text" class="form-control" id="login-username" name="username" placeholder="Username" required>
+                                    <label for="login-username">Username</label>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="form-floating">
+                                        <input type="password" class="form-control" id="login-password" name="password" placeholder="Password" required>
+                                        <label for="login-password">Password</label>
+                                    </div>
+                                    <div class="d-flex justify-content-end mt-2">
+                                        <a href="#" class="text-decoration-none" style="color: #005b00; font-size: 0.9rem;">
+                                            Forgot password?
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="remember-me">
+                                    <label class="form-check-label" for="remember-me" style="font-size: 0.9rem;">
+                                        Remember me on this device
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn btn-auth w-100 mb-4">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </button>
+                                
+                                <div class="social-divider">
+                                    <span>Or continue with</span>
+                                </div>
+                                
+                                <!-- Replace the existing social-login div with this -->
+                                <div class="social-login">
+                                    <a href="#" class="social-btn" onclick="showSocialLoginMessage('Google')">
+                                        <i class="fab fa-google"></i>
+                                    </a>
+                                    <a href="#" class="social-btn" onclick="showSocialLoginMessage('Facebook')">
+                                        <i class="fab fa-facebook-f"></i>
+                                    </a>
+                                    <a href="#" class="social-btn" onclick="showSocialLoginMessage('Apple')">
+                                        <i class="fab fa-apple"></i>
+                                    </a>
+                                </div>
+
+                                <p class="text-center mt-4" style="font-size: 0.9rem;">
+                                    Don't have an account? 
+                                    <a href="#" style="color: #005b00; font-weight: 500;" 
+                                       onclick="event.preventDefault(); document.getElementById('signup-tab').click();">
+                                        Create an account
+                                    </a>
+                                </p>
+                            </form>
+                        </div>
+
+                        <!-- Signup Tab -->
+                        <div class="tab-pane fade" id="signup" role="tabpanel" aria-labelledby="signup-tab">
+                            <form id="signupForm" action="/signup" method="POST" class="mt-4 needs-validation" novalidate>
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-group mb-4 position-relative">
+                                            <label for="signup-username" class="form-label d-flex align-items-center">
+                                              Username
+                                              <span class="text-danger ms-1">*</span>
+                                              <div class="tooltip-icon ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                                   title="Username must start with a letter and can only contain letters, numbers, and underscores">
+                                                <i class="fas fa-circle-info text-muted"></i>
+                                              </div>
+                                            </label>
+                                            <input type="text" class="form-control" id="signup-username" name="username" placeholder="Enter a username" required>
+                                            <div class="invalid-feedback">Please enter a valid username</div>
+                                          </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-group mb-4 position-relative">
+                                            <label for="signup-email" class="form-label d-flex align-items-center">
+                                              Email Address
+                                              <span class="text-danger ms-1">*</span>
+                                              <div class="tooltip-icon ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                                   title="Please enter a valid email address (e.g., user@example.com)">
+                                                <i class="fas fa-circle-info text-muted"></i>
+                                              </div>
+                                            </label>
+                                            <input type="email" class="form-control" id="signup-email" name="email" placeholder="Enter your email address" required>
+                                            <div class="invalid-feedback">Please enter a valid email address</div>
+                                            <div id="email-validation-check" class="valid-feedback d-none">
+                                              <i class="fas fa-check text-success"></i> Valid email format
+                                            </div>
+                                          </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-floating">
+                                        <input type="password" class="form-control" id="signup-password" name="password" placeholder="Password" required>
+                                        <label for="signup-password">Password</label>
+                                        <div class="invalid-feedback">Please enter a valid password</div>
+                                    </div>
+                                    <div class="password-requirements mt-2">
+                                        <div id="length-check">
+                                            <i class="far fa-circle me-1"></i> Minimum 8 characters
+                                        </div>
+                                        <div id="uppercase-check">
+                                            <i class="far fa-circle me-1"></i> One uppercase letter
+                                        </div>
+                                        <div id="number-check">
+                                            <i class="far fa-circle me-1"></i> One number
+                                        </div>
+                                        <div id="special-check">
+                                            <i class="far fa-circle me-1"></i> One special character
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Email Verification Button -->
+                                <div class="mb-4">
+                                    <button class="btn btn-auth w-100" type="button" id="send-otp-btn">
+                                        <i class="fas fa-envelope me-2"></i>Verify Email
+                                    </button>
+                                </div>
+
+                                <!-- OTP Verification -->
+                                <div class="mb-4 d-none" id="otp-section">
+                                    <div class="otp-section">
+                                        <label for="otp-input" class="form-label">Verification Code</label>
+                                        <input type="text" class="form-control" id="otp-input" maxlength="6" placeholder="000000">
+                                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                                            <span id="otp-timer" class="text-muted">Code expires in: 03:00</span>
+                                            <button class="btn btn-sm btn-outline-success" type="button" id="verify-otp-btn">
+                                                <i class="fas fa-check-circle me-2"></i>Verify
+                                            </button>
+                                        </div>
+                                        <div class="mt-2 text-center">
+                                            <a href="#" class="d-none text-success" id="resend-otp">Resend code</a>
+                                            <span class="text-muted d-none" id="resend-countdown"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Phone Number field (optional) -->
+                                <div class="mb-4">
+                                    <label for="phone-group" class="form-label">Phone Number (Optional)</label>
+                                    <div class="input-group" id="phone-group">
+                                        <select class="form-select" style="max-width: 130px;" id="country-code" name="country_code">
+                                            <option value="" selected disabled>Code</option>
+                                            <option value="+65">🇸🇬 +65</option>
+                                            <option value="+60">🇲🇾 +60</option>
+                                            <option value="+62">🇮🇩 +62</option>
+                                            <option value="+66">🇹🇭 +66</option>
+                                            <option value="+84">🇻🇳 +84</option>
+                                            <option value="+63">🇵🇭 +63</option>
+                                        </select>
+                                        <input type="tel" class="form-control" id="signup-phone" name="phone" placeholder="Phone number">
+                                    </div>
+                                </div>
+
+                                <!-- Role Selection -->
+                                <div class="mb-4">
+                                    <label class="form-label">Register As</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="form-check p-3 border rounded" style="border-color: #dce0e5 !important;">
+                                                <input class="form-check-input" type="radio" name="role" id="role-farmer" value="Farmer" required>
+                                                <label class="form-check-label w-100" for="role-farmer">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-tractor text-success me-3 fa-lg"></i>
+                                                        <div>
+                                                            <strong>Farmer</strong>
+                                                            <div class="small text-muted">Sell your produce</div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-check p-3 border rounded" style="border-color: #dce0e5 !important;">
+                                                <input class="form-check-input" type="radio" name="role" id="role-customer" value="Customer" required>
+                                                <label class="form-check-label w-100" for="role-customer">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-shopping-basket text-success me-3 fa-lg"></i>
+                                                        <div>
+                                                            <strong>Customer</strong>
+                                                            <div class="small text-muted">Buy fresh produce</div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="invalid-feedback">Please select a role</div>
+                                </div>
+
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="terms-agree" required>
+                                    <label class="form-check-label" for="terms-agree" style="font-size: 0.9rem;">
+                                        I agree to the <a href="{{ url_for('terms') }}" target="_blank" style="color: #005b00;">Terms of Service</a> and 
+                                        <a href="{{ url_for('privacy') }}" target="_blank" style="color: #005b00;">Privacy Policy</a>
+                                    </label>
+                                    <div class="invalid-feedback" id="terms-feedback">You must agree to the terms and conditions to create an account</div>
+                                </div>
+
+                                <!-- Hidden field for email verification -->
+                                <input type="hidden" id="verified_email" name="verified_email">
+
+                                <!-- Submit Button -->
+                                <button type="submit" class="btn btn-auth w-100 mb-3" id="signup-submit" disabled>
+                                    <i class="fas fa-user-plus me-2"></i>Create Account
+                                </button>
+                                
+                                <p class="text-center" style="font-size: 0.9rem;">
+                                    Already have an account? 
+                                    <a href="#" style="color: #005b00; font-weight: 500;" 
+                                       onclick="event.preventDefault(); document.getElementById('login-tab').click();">
+                                        Sign in
+                                    </a>
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="auth-footer">
+                        <p>© 2025 GrinSOIL. All rights reserved.</p>
+                        <div>
+                            <a href="#">Privacy Policy</a> • 
+                            <a href="#">Terms of Service</a> • 
+                            <a href="#">Help Center</a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <div id="snackbar" class="snackbar"></div>
 </div>
+
+<script>
+    // Update form title based on active tab
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginTab = document.getElementById('login-tab');
+        const signupTab = document.getElementById('signup-tab');
+        const formTitle = document.getElementById('form-title');
+        const formSubtitle = document.getElementById('form-subtitle');
+        
+        loginTab.addEventListener('click', function() {
+            formTitle.textContent = 'Sign In';
+            formSubtitle.textContent = 'Access your GrinSOIL account';
+        });
+        
+        signupTab.addEventListener('click', function() {
+            formTitle.textContent = 'Create Account';
+            formSubtitle.textContent = 'Join the GrinSOIL community';
+        });
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => {
+      new bootstrap.Tooltip(tooltip);
+    });
+    
+    // Email validation visual feedback
+    const emailInput = document.getElementById('signup-email');
+    const emailCheck = document.getElementById('email-validation-check');
+    
+    emailInput.addEventListener('input', function() {
+      if (emailInput.checkValidity()) {
+        emailCheck.classList.remove('d-none');
+      } else {
+        emailCheck.classList.add('d-none');
+      }
+    });
+  });
+  // Add to existing showSocialLoginMessage function if it exists, or create it
+    function showSocialLoginMessage(provider) {
+        event.preventDefault();
+        const snackbar = document.getElementById("snackbar");
+        snackbar.textContent = `${provider} login is not available yet`;
+        snackbar.className = "snackbar show";
+        
+        setTimeout(function(){
+            snackbar.className = snackbar.className.replace("show", "");
+        }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const signupForm = document.getElementById('signupForm');
+    const termsCheckbox = document.getElementById('terms-agree');
+    const signupSubmitBtn = document.getElementById('signup-submit');
+
+    // Function to validate form
+    function validateForm() {
+        const isTermsChecked = termsCheckbox.checked;
+        const isEmailVerified = document.getElementById('verified_email').value !== '';
+        
+        // Enable/disable submit button based on terms and email verification
+        signupSubmitBtn.disabled = !(isTermsChecked && isEmailVerified);
+        
+        // Show/hide terms feedback
+        if (!isTermsChecked) {
+            termsCheckbox.classList.add('is-invalid');
+        } else {
+            termsCheckbox.classList.remove('is-invalid');
+        }
+    }
+
+    // Add event listener for terms checkbox
+    termsCheckbox.addEventListener('change', validateForm);
+
+    // Form submission handler
+    signupForm.addEventListener('submit', function(event) {
+        if (!termsCheckbox.checked) {
+            event.preventDefault();
+            termsCheckbox.classList.add('is-invalid');
+            
+            // Scroll to terms checkbox and show alert
+            termsCheckbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            alert('Please agree to the Terms and Conditions to create an account.');
+        }
+    });
+
+    // Initial validation
+    validateForm();
+});
+</script>
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -351,4 +839,3 @@
 <script src="{{ url_for('static', filename='js/enhanced-validation.js') }}"></script>
 <script src="{{ url_for('static', filename='js/otp-validation.js') }}"></script>
 {% endblock %}
-

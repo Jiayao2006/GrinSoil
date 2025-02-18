@@ -13,6 +13,7 @@ import google.generativeai as genai
 import shutil
 import uuid
 import traceback
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -28,6 +29,16 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 # Initialize the model
 model = genai.GenerativeModel('gemini-pro')
+
+# Email configuration
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'grinsoil05@gmail.com'  # Use environment variables for security
+app.config['MAIL_PASSWORD'] = 'engp zgbl xtuc vbsx'     # Use app password for Gmail
+app.config['MAIL_DEFAULT_SENDER'] = ('GrinSOIL Verification', 'your_email@gmail.com')
+
+mail = Mail(app)
 
 # In your __init__.py
 @app.before_request
@@ -193,52 +204,94 @@ def send_otp():
     try:
         data = request.get_json()
         phone = data.get('phone')
+        email = data.get('email')  # Get email if provided
         
-        if not phone:
-            return jsonify({'error': 'Phone number is required'}), 400
+        # Determine verification method (phone or email)
+        use_email = bool(email and not phone)
+        identifier = email if use_email else phone
+        
+        if not identifier:
+            return jsonify({'error': 'Email or phone number is required'}), 400
         
         # Check if can resend OTP
-        if not otp_manager.can_resend_otp(phone):
+        if not otp_manager.can_resend_otp(identifier):
             return jsonify({'error': 'Please wait 30 seconds before requesting a new OTP'}), 429
         
         # Generate and store OTP
         otp = otp_manager.generate_otp()
-        otp_manager.store_otp(phone, otp)
+        otp_manager.store_otp(identifier, otp)
         
-        # Store phone number in session
-        session['phone_number'] = phone
+        # Store identifier in session
+        if use_email:
+            session['verification_email'] = email
+        else:
+            session['phone_number'] = phone
         
-        # For development, print to console
-        print(f"Development Mode - OTP for {phone}: {otp}")
+        # Send OTP via email or show in console for phone
+        if use_email:
+            try:
+                msg = Message(
+                    subject="Your GrinSOIL Verification Code",
+                    recipients=[email],
+                    html=f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <h2 style="color: #198754;">GrinSOIL Verification</h2>
+                        </div>
+                        <p>Hello,</p>
+                        <p>Your verification code is:</p>
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; margin: 20px 0;">
+                            {otp}
+                        </div>
+                        <p>This code will expire in <strong>3 minutes</strong>.</p>
+                        <p>If you didn't request this code, please ignore this email.</p>
+                        <div style="margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px; font-size: 12px; color: #6c757d;">
+                            <p>© GrinSOIL. All rights reserved.</p>
+                        </div>
+                    </div>
+                    """
+                )
+                mail.send(msg)
+                print(f"Development Mode - Email OTP sent to {email}: {otp}")
+            except Exception as email_error:
+                print(f"Error sending email: {str(email_error)}")
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Failed to send verification email: {str(email_error)}'
+                }), 500
+        else:
+            # For development, print to console for phone verification
+            print(f"Development Mode - OTP for {phone}: {otp}")
         
         return jsonify({
             'status': 'success',
-            'message': 'OTP sent successfully',
+            'message': f'OTP sent successfully to your {"email" if use_email else "phone"}',
             'expiresIn': 180  # 3 minutes in seconds
         }), 200
         
     except Exception as e:
         print(f"Error in send_otp: {str(e)}")
-        # Return 200 status since OTP was actually generated successfully
         return jsonify({
-            'status': 'success',
-            'message': 'OTP sent successfully despite error',
-            'error_details': str(e),
-            'expiresIn': 180
-        }), 200
+            'error': 'An unexpected error occurred',
+            'details': str(e)
+        }), 500
 
 @app.route('/verify-otp', methods=['POST'])
 def verify_otp():
     try:
         data = request.get_json()
         phone = data.get('phone')
+        email = data.get('email')
         otp = data.get('otp')
         
-        if not all([phone, otp]):
-            return jsonify({'error': 'Phone and OTP are required'}), 400
+        # Determine which identifier to use
+        identifier = email if email else phone
+        
+        if not identifier or not otp:
+            return jsonify({'error': 'Identifier and OTP are required'}), 400
         
         # Verify OTP
-        is_valid, message = otp_manager.verify_otp(phone, otp)
+        is_valid, message = otp_manager.verify_otp(identifier, otp)
         
         if is_valid:
             return jsonify({'message': message}), 200
@@ -413,14 +466,15 @@ def signup():
         # Get form data
         username = request.form.get('username')
         password = request.form.get('password')
-        full_phone = request.form.get('full_phone')  # Get the full phone number from hidden input
-        email = request.form.get('email')
+        verified_email = request.form.get('verified_email')  # Get verified email
+        full_phone = request.form.get('full_phone')  # Now optional
         role = request.form.get('role')
         
         # Debug prints
         print("Form Data Received:")
         print(f"Username: {username}")
-        print(f"Full Phone: {full_phone}")
+        print(f"Email: {verified_email}")
+        print(f"Phone: {full_phone}")
         print(f"Role: {role}")
         
         # Input validation
@@ -432,23 +486,17 @@ def signup():
             flash('Password is required', 'danger')
             return redirect(url_for('signup_login'))
         
-        if not full_phone:
-            # Try to construct from individual parts if full_phone is not present
-            country_code = request.form.get('country_code')
-            phone_number = request.form.get('phone')
-            full_phone = f"{country_code}{phone_number}" if country_code and phone_number else None
+        if not verified_email:
+            flash('Verified email is required', 'danger')
+            return redirect(url_for('signup_login'))
             
-            if not full_phone:
-                flash('Phone number with country code is required', 'danger')
-                return redirect(url_for('signup_login'))
-        
         if not role:
             flash('Role selection is required', 'danger')
             return redirect(url_for('signup_login'))
         
-        # Verify phone number
-        if not otp_manager.is_verified(full_phone):
-            flash('Phone number must be verified with OTP', 'danger')
+        # Verify that email was verified with OTP
+        if not otp_manager.is_verified(verified_email):
+            flash('Email must be verified with OTP', 'danger')
             return redirect(url_for('signup_login'))
         
         # Validate password
@@ -457,15 +505,8 @@ def signup():
             flash(password_message, 'danger')
             return redirect(url_for('signup_login'))
         
-        # Validate email if provided
-        if email:
-            is_valid_email, email_message = validate_email(email)
-            if not is_valid_email:
-                flash(email_message, 'danger')
-                return redirect(url_for('signup_login'))
-        
         # Create user
-        if user_manager.create_user(username, password, full_phone, role, email):
+        if user_manager.create_user(username, password, full_phone or '', role, verified_email):
             flash('Registration successful! Please login.', 'success')
         else:
             flash('Username already exists', 'danger')
@@ -2349,6 +2390,14 @@ def customer_order_tracker():
         traceback.print_exc()
         flash('Error loading order history', 'danger')
         return redirect(url_for('customer_dashboard'))
+    
+@app.route('/terms')
+def terms():
+    return render_template('terms_of_service.html')
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy_policy.html')
     
 if __name__ == '__main__':
     init_admin()
