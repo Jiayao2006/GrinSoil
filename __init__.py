@@ -1154,21 +1154,39 @@ def update_notification(notification_id):
     
     return redirect(url_for('admin_notifications'))
 
-@app.route('/admin/notification/delete/<notification_id>')
-@admin_required
+@app.route('/notification/delete/<notification_id>', methods=['POST'])
+@login_required
 def delete_notification(notification_id):
-    """Admin route to delete a notification"""
     try:
-        if notification_manager.delete_notification(notification_id):
-            flash('Notification deleted successfully', 'success')
-        else:
-            flash('Failed to delete notification', 'danger')
+        username = session['username']
+        user_role = session.get('role')
+        
+        # Delete notification
+        success = notification_manager.delete_notification(notification_id)
+        
+        if success:
+            # Get updated notification counts after deletion
+            notification_counts = notification_manager.get_notification_counts(user_role, username)
             
+            return jsonify({
+                'success': True,
+                'message': 'Notification deleted successfully',
+                'counts': notification_counts
+            })
+        
+        return jsonify({
+            'success': False,
+            'message': 'Failed to delete notification'
+        }), 400
+        
     except Exception as e:
         print(f"Error in delete_notification: {str(e)}")
-        flash('An error occurred while deleting the notification', 'danger')
-    
-    return redirect(url_for('admin_notifications'))
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while deleting the notification'
+        }), 500
 
 
 """Product Listing"""
@@ -2125,47 +2143,45 @@ def farmer_orders():
             # Get all orders
             all_orders = orders_db.get('orders', {})
             
-            print("DEBUG: Total orders in database:", len(all_orders))
-            
             for order_id, order_data in all_orders.items():
-                # Extensive type and content checking
-                if not isinstance(order_data, dict):
-                    print(f"Skipping invalid order data for {order_id}: {type(order_data)}")
-                    continue
-                
-                # Check farmer statuses
+                # Check if this order involves the farmer
                 farmer_statuses = order_data.get('farmer_statuses', {})
+                
                 if farmer_username not in farmer_statuses:
                     continue
                 
-                # Validate and process items
+                # Extract items that belong to this farmer
                 raw_items = order_data.get('items', [])
-                if not isinstance(raw_items, list):
-                    print(f"Invalid items type for order {order_id}: {type(raw_items)}")
-                    continue
+                farmer_products = []  # Renamed to avoid conflict with dict.items()
                 
-                # Filter items belonging to this farmer
-                farmer_items = []
                 for item in raw_items:
+                    # Skip non-dict items
                     if not isinstance(item, dict):
-                        print(f"Invalid item in order {order_id}: {type(item)}")
                         continue
                     
+                    # Attempt different methods to identify farmer's items
                     try:
-                        product = listed_product_manager.get_product(item.get('product_id'))
-                        if product and product.owner == farmer_username:
-                            farmer_items.append({
-                                'name': item.get('name', 'Unknown'),
-                                'quantity': item.get('quantity', 0),
-                                'unit': item.get('unit', ''),
-                                'price': item.get('price', 0),
-                                'subtotal': item.get('subtotal', 0)
-                            })
-                    except Exception as e:
-                        print(f"Error processing item in order {order_id}: {e}")
+                        # Method 1: Check by product ownership
+                        product_id = item.get('product_id')
+                        if product_id:
+                            product = listed_product_manager.get_product(product_id)
+                            if product and product.owner == farmer_username:
+                                farmer_products.append(item)
+                                continue
+                        
+                        # Method 2: Check by farmer_username field
+                        if item.get('farmer_username') == farmer_username:
+                            farmer_products.append(item)
+                            continue
+                        
+                        # Method 3: If this farmer is the only one in the order, include all items
+                        if len(farmer_statuses) == 1 and farmer_username in farmer_statuses:
+                            farmer_products.append(item)
+                    except Exception:
+                        continue
                 
-                # Skip if no farmer items
-                if not farmer_items:
+                # Skip if no items for this farmer
+                if not farmer_products:
                     continue
                 
                 # Prepare customer details
@@ -2174,15 +2190,13 @@ def farmer_orders():
                 shipping_info = order_data.get('shipping_info', {})
                 
                 # Create order object
-                if not isinstance(farmer_items, list):
-                    farmer_items = list(farmer_items) if hasattr(farmer_items, '__iter__') else []
                 order = {
                     'order_id': order_id,
-                    'items': farmer_items,  # Ensure this is a list
+                    'order_products': farmer_products,  # Changed key name to avoid conflict
                     'status': farmer_statuses.get(farmer_username, 'Unknown'),
                     'customer': customer_username,
                     'customer_details': {
-                        'full_name': customer_details.get('username', customer_username),
+                        'full_name': shipping_info.get('name', customer_details.get('username', customer_username)),
                         'phone': shipping_info.get('phone', 'N/A'),
                         'address': ', '.join(filter(bool, [
                             shipping_info.get('street', ''),
@@ -2191,20 +2205,12 @@ def farmer_orders():
                         ]))
                     },
                     'created_at': order_data.get('created_at', 'N/A'),
-                    'total': sum(item.get('subtotal', 0) for item in farmer_items),
+                    'total': sum(item.get('subtotal', 0) for item in farmer_products),
                 }
-                
-                # Debug print
-                print(f"Order {order_id} processed:")
-                print(f"Items: {order['items']}")
-                print(f"Type of items: {type(order['items'])}")
                 
                 # Apply status filter
                 if status_filter == 'all' or order['status'] == status_filter:
                     orders.append(order)
-        
-        # Final debug information
-        print(f"Total farmer orders found: {len(orders)}")
         
         return render_template('farmer_orders.html', 
                               orders=orders, 
