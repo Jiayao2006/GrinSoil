@@ -1522,16 +1522,21 @@ class CartItem:
         self.price = price
         self.unit = unit
         self.subtotal = price * quantity
+        
+        # Get product's current quantity
+        listed_product_manager = ListedProductManager()
+        product = listed_product_manager.get_product(product_id)
+        self.max_quantity = product.quantity if product else quantity
 
     def to_dict(self) -> dict:
-        """Convert CartItem to dictionary for storage"""
         return {
             'product_id': self.product_id,
             'quantity': self.quantity,
             'name': self.name,
             'price': self.price,
             'unit': self.unit,
-            'subtotal': self.subtotal
+            'subtotal': self.subtotal,
+            'max_quantity': self.max_quantity
         }
     
     @classmethod

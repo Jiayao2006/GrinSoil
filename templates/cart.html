@@ -41,25 +41,35 @@
                                 <p class="text-muted mb-0">Price: ${{ "%.2f"|format(item.price) }} per {{ item.unit }}</p>
                             </div>
 
-                            <!-- Quantity Controls -->
+                            <!-- Replace the existing quantity controls section -->
                             <div class="col-md-4">
                                 <div class="input-group" role="group">
                                     <button class="btn btn-outline-secondary" type="button"
-                                        onclick="updateQuantity('{{ item.product_id }}', -1)">
+                                            onclick="updateQuantity('{{ item.product_id }}', -1)"
+                                            id="decrease-{{ item.product_id }}"
+                                            {% if item.quantity <= 1 %}disabled{% endif %}>
                                         <i class="fas fa-minus"></i>
                                     </button>
-                                    <input type="number" class="form-control text-center quantity-input"
-                                        value="{{ item.quantity }}" min="1"
+                                    <input type="number" 
+                                        class="form-control text-center quantity-input"
+                                        value="{{ item.quantity }}" 
+                                        min="1"
+                                        max="{{ item.max_quantity }}"
                                         onchange="handleQuantityChange(this, '{{ item.product_id }}')"
-                                        data-product-id="{{ item.product_id }}">
+                                        data-product-id="{{ item.product_id }}"
+                                        id="quantity-{{ item.product_id }}">
                                     <button class="btn btn-outline-secondary" type="button"
-                                        onclick="updateQuantity('{{ item.product_id }}', 1)">
+                                            onclick="updateQuantity('{{ item.product_id }}', 1)"
+                                            id="increase-{{ item.product_id }}"
+                                            {% if item.quantity >= item.max_quantity %}disabled{% endif %}>
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
                                 <div class="text-muted small mt-1">
                                     ${{ "%.2f"|format(item.price) }} per {{ item.unit }}
                                 </div>
+                                <!-- Add error message container -->
+                                <div class="text-danger small mt-1" id="error-{{ item.product_id }}" style="display: none;"></div>
                             </div>
 
                             <!-- Subtotal and Remove -->
@@ -173,81 +183,88 @@
 
 {% block extra_js %}
 <script>
-    async function updateQuantity(productId, change) {
-        try {
-            const input = document.querySelector(`input[data-product-id="${productId}"]`);
-            const currentQuantity = parseInt(input.value);
-            const newQuantity = Math.max(1, currentQuantity + change); // Ensure minimum of 1
-            
-            // Don't make API call if quantity didn't change
-            if (newQuantity === currentQuantity && change !== 0) {
-                return;
-            }
 
-            const response = await fetch('{{ url_for("update_cart") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    product_id: productId,
-                    quantity: newQuantity
-                })
-            });
-
-            const data = await response.json();
-            
-            if (response.ok) {
-                // Update input value
-                input.value = newQuantity;
-                input.setAttribute('value', newQuantity);
-
-                // Update quantity in summary
-                const quantityElement = document.querySelector(`.item-quantity[data-product-id="${productId}"]`);
-                if (quantityElement) {
-                    quantityElement.textContent = newQuantity;
-                }
-
-                // Update item subtotal in cart
-                const itemElement = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
-                if (itemElement) {
-                    const subtotalElement = itemElement.querySelector('.fw-bold:not(.text-success)');
-                    if (subtotalElement && data.items[productId]) {
-                        subtotalElement.textContent = `$${data.items[productId].subtotal.toFixed(2)}`;
-                    }
-                }
-
-                // Update item subtotal in summary
-                const summaryItemSubtotal = document.querySelector(`.item-subtotal[data-product-id="${productId}"]`);
-                if (summaryItemSubtotal && data.items[productId]) {
-                    summaryItemSubtotal.textContent = `$${data.items[productId].subtotal.toFixed(2)}`;
-                }
-
-                // Update all total prices (summary subtotal and final total)
-                const summarySubtotal = document.querySelector('.summary-subtotal');
-                const summaryTotal = document.querySelector('.summary-total');
-                if (summarySubtotal) {
-                    summarySubtotal.textContent = `$${data.total.toFixed(2)}`;
-                }
-                if (summaryTotal) {
-                    summaryTotal.textContent = `$${data.total.toFixed(2)}`;
-                }
-
-                // Update cart count in header
-                const cartCount = document.getElementById('cart-count');
-                if (cartCount) {
-                    cartCount.textContent = Object.keys(data.items).length;
-                }
-            } else {
-                showAlert(data.error || 'Failed to update quantity', 'danger');
-                // Reset input to previous value
-                input.value = currentQuantity;
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showAlert('An error occurred while updating quantity', 'danger');
-        }
+    // Function to show error message
+    function showQuantityError(productId, message) {
+        const errorDiv = document.getElementById(`error-${productId}`);
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        
+        // Hide error after 3 seconds
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 3000);
     }
+
+    // Function to validate quantity
+    function validateQuantity(quantity, maxQuantity) {
+        if (quantity < 1) {
+            return {
+                valid: false,
+                message: 'Quantity cannot be less than 1'
+            };
+        }
+        if (quantity > maxQuantity) {
+            return {
+                valid: false,
+                message: `Only ${maxQuantity} items available`
+            };
+        }
+        return {
+            valid: true,
+            message: ''
+        };
+    }
+
+    // Updated updateQuantity function
+async function updateQuantity(productId, change) {
+    try {
+        const input = document.getElementById(`quantity-${productId}`);
+        const currentQuantity = parseInt(input.value);
+        const maxQuantity = parseInt(input.getAttribute('max'));
+        const newQuantity = currentQuantity + change;
+
+        // Validate new quantity
+        const validation = validateQuantity(newQuantity, maxQuantity);
+        if (!validation.valid) {
+            showQuantityError(productId, validation.message);
+            return;
+        }
+
+        // Make API call to update cart
+        const response = await fetch('/cart/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: newQuantity
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update input value
+            input.value = newQuantity;
+            
+            // Update buttons state
+            document.getElementById(`decrease-${productId}`).disabled = (newQuantity <= 1);
+            document.getElementById(`increase-${productId}`).disabled = (newQuantity >= maxQuantity);
+            
+            // Update subtotal and total
+            updateCartUI(data);
+        } else {
+            showQuantityError(productId, data.error || 'Failed to update quantity');
+            // Reset input to previous value
+            input.value = currentQuantity;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showQuantityError(productId, 'An error occurred while updating quantity');
+    }
+}
 
     async function removeItem(productId) {
         if (!confirm('Are you sure you want to remove this item from your cart?')) {
@@ -289,19 +306,31 @@
     }
 
     // Handle quantity input changes
-    function handleQuantityChange(input, productId) {
-        const newValue = parseInt(input.value);
-        if (isNaN(newValue) || newValue < 1) {
+    // Updated handleQuantityChange function
+function handleQuantityChange(input, productId) {
+    const newValue = parseInt(input.value);
+    const maxQuantity = parseInt(input.getAttribute('max'));
+    
+    // Validate input value
+    const validation = validateQuantity(newValue, maxQuantity);
+    if (!validation.valid) {
+        showQuantityError(productId, validation.message);
+        // Reset to valid value
+        if (newValue < 1) {
             input.value = 1;
-            updateQuantity(productId, 0);
-        } else {
-            const oldValue = parseInt(input.getAttribute('value'));
-            updateQuantity(productId, newValue - oldValue);
+        } else if (newValue > maxQuantity) {
+            input.value = maxQuantity;
         }
+        return;
     }
 
+    // Update cart
+    updateQuantity(productId, 0);
+}
+
+    // Function to update cart UI
     function updateCartUI(cartData) {
-        // Update cart count in header
+        // Update cart count
         const cartCount = document.getElementById('cart-count');
         if (cartCount) {
             cartCount.textContent = Object.keys(cartData.items).length;
@@ -309,21 +338,28 @@
 
         // Update subtotals and total
         Object.entries(cartData.items).forEach(([productId, item]) => {
-            const itemElement = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
-            if (itemElement) {
-                // Update subtotal
-                const subtotalElement = itemElement.querySelector('.fw-bold:not(.text-success)');
-                if (subtotalElement) {
-                    subtotalElement.textContent = `$${item.subtotal.toFixed(2)}`;
-                }
+            // Update item subtotal
+            const subtotalElement = document.querySelector(`.item-subtotal[data-product-id="${productId}"]`);
+            if (subtotalElement) {
+                subtotalElement.textContent = `$${item.subtotal.toFixed(2)}`;
+            }
+
+            // Update quantity display in summary
+            const quantityElement = document.querySelector(`.item-quantity[data-product-id="${productId}"]`);
+            if (quantityElement) {
+                quantityElement.textContent = item.quantity;
             }
         });
 
         // Update total price
-        const totalElements = document.querySelectorAll('.fw-bold.text-success');
-        totalElements.forEach(element => {
-            element.textContent = `$${cartData.total.toFixed(2)}`;
-        });
+        const summarySubtotal = document.querySelector('.summary-subtotal');
+        const summaryTotal = document.querySelector('.summary-total');
+        if (summarySubtotal) {
+            summarySubtotal.textContent = `$${cartData.total.toFixed(2)}`;
+        }
+        if (summaryTotal) {
+            summaryTotal.textContent = `$${cartData.total.toFixed(2)}`;
+        }
     }
 
     function showAlert(message, type) {

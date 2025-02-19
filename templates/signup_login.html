@@ -446,7 +446,7 @@
                 <div class="auth-image-container">
                     <div class="auth-image-overlay"></div>
                     <div class="auth-image-content">
-                        <img src="../static/images/grinsoil-logo-white.png" alt="GrinSOIL Logo" class="auth-logo">
+                        <img src="../static/images/png" alt="GrinSOIL Logo" class="auth-logo">
                         <h2>Welcome to GrinSOIL</h2>
                         <p>Connecting farmers and consumers for a sustainable agricultural future</p>
                         
@@ -729,8 +729,8 @@
                     <div class="auth-footer">
                         <p>© 2025 GrinSOIL. All rights reserved.</p>
                         <div>
-                            <a href="#">Privacy Policy</a> • 
-                            <a href="#">Terms of Service</a> • 
+                            <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a> • 
+                            <a href="{{ url_for('terms') }}" target="_blank">Terms of Service</a> • 
                             <a href="#">Help Center</a>
                         </div>
                     </div>

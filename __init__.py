@@ -1717,12 +1717,23 @@ def add_to_cart():
 @app.route('/cart/update', methods=['POST'])
 @login_required
 def update_cart():
-    """Update cart item quantity"""
     try:
         data = request.get_json()
         product_id = data.get('product_id')
         quantity = int(data.get('quantity', 0))
 
+        # Get product to check available quantity
+        product = listed_product_manager.get_product(product_id)
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+
+        # Validate quantity
+        if quantity > product.quantity:
+            return jsonify({'error': f'Only {product.quantity} items available'}), 400
+        if quantity < 1:
+            return jsonify({'error': 'Quantity must be at least 1'}), 400
+
+        # Update cart
         cart = cart_manager.get_cart(session['username'])
         cart.update_quantity(product_id, quantity)
         cart_manager.update_cart(session['username'], cart)
@@ -1731,8 +1742,6 @@ def update_cart():
 
     except Exception as e:
         print(f"Error updating cart: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': 'Failed to update cart'}), 500
 
 @app.route('/cart/remove', methods=['POST'])
@@ -1766,18 +1775,122 @@ def chat_message():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
 
-        # Add scope limitation to the prompt
-        prompt = f"""You are an agricultural assistant. Only answer questions related to:
-        - Food and nutrition
-        - Farming techniques
-        - Crop management
-        - Food safety
-        - Sustainable agriculture
-        - Related topics
+        # Get user context
+        username = session.get('username')
+        user_role = session.get('role')
         
-        For other topics, respond: "I specialize in food and agriculture. How can I help you with those topics?"
+        # Build user context based on role
+        if user_role == 'Farmer':
+            # Get farmer's products and orders
+            products = listed_product_manager.get_farmer_products(username)
+            expiring_products = product_manager.get_user_products(username)
+            
+            # Format products info
+            product_info = []
+            for p in products:
+                product_info.append(f"- {p.name}: {p.quantity} {p.unit} at ${p.price} per {p.unit}")
+            
+            # Format expiring products
+            expiring_info = []
+            for p in expiring_products:
+                expiring_info.append(f"- {p.name}: Expires on {p.expiry_date} (Status: {p.status})")
+
+            user_context = f"""
+            You have access to this farmer's information:
+            Username: {username}
+            Listed Products:
+            {chr(10).join(product_info) if product_info else "No products listed"}
+            
+            Expiring Products Tracker:
+            {chr(10).join(expiring_info) if expiring_info else "No products in tracker"}
+            """
+
+        elif user_role == 'Customer':
+            # Get customer's cart and orders
+            cart = cart_manager.get_cart(username)
+            cart_items = cart.get_items()
+            
+            # Format cart info
+            cart_info = []
+            for item in cart_items:
+                cart_info.append(f"- {item.name}: {item.quantity} {item.unit} at ${item.price} per {item.unit}")
+
+            # Get expiring products
+            expiring_products = product_manager.get_user_products(username)
+            expiring_info = []
+            for p in expiring_products:
+                expiring_info.append(f"- {p.name}: Expires on {p.expiry_date} (Status: {p.status})")
+
+            user_context = f"""
+            You have access to this customer's information:
+            Username: {username}
+            Current Cart:
+            {chr(10).join(cart_info) if cart_info else "Cart is empty"}
+            
+            Expiring Products Tracker:
+            {chr(10).join(expiring_info) if expiring_info else "No products in tracker"}
+            """
+        else:
+            user_context = "No specific user information available."
+
+        # Add website navigation paths
+        navigation_paths = {
+            'Farmer': {
+                'list_product': '/farmer/list-product',
+                'my_listings': '/farmer/my-listings',
+                'expiry_tracker': '/farmer/expiry-tracker',
+                'orders': '/farmer/orders'
+            },
+            'Customer': {
+                'shop': '/shop',
+                'cart': '/cart',
+                'expiry_tracker': '/customer/expiry-tracker',
+                'orders': '/customer/order-tracker'
+            }
+        }
+
+        # Add website paths to prompt
+        website_paths = navigation_paths.get(user_role, {})
+        paths_context = f"""
+        You can direct users to these pages:
+        Farmer:
+        - To list a new product: {website_paths.get('list_product')}
+        - To view your listings: {website_paths.get('my_listings')}
+        - To check expiry tracker: {website_paths.get('expiry_tracker')}
+        - To manage orders: {website_paths.get('orders')}
         
-        Question: {user_message}"""
+        Customer:
+        - To browse products: {website_paths.get('shop')}
+        - To view cart: {website_paths.get('cart')}
+        - To check expiry tracker: {website_paths.get('expiry_tracker')}
+        - To track orders: {website_paths.get('orders')}
+        """
+
+        prompt = f"""You are an agricultural assistant for GrinSOIL, a platform connecting farmers and customers. 
+        You have access to the user's account information and can answer questions about their activities on the platform.
+
+        User Role: {user_role}
+        {user_context}
+        {paths_context}
+
+        When users express interest in an action:
+        1. Provide them with the direct link to the relevant page
+        2. Give them a brief guide on what they'll find there
+        3. Offer any relevant tips for that section
+
+        For example, if they want to list a product, say something like:
+        "You can list a new product at [link]. On that page, you'll be able to:
+        - Add product details
+        - Set prices
+        - Upload images
+        - Manage inventory"
+
+        Always format links as HTML anchor tags, for example: <a href="/farmer/list-product">click here</a>
+
+        Only use the information provided above to answer account-specific questions.
+        If you don't have certain information, let the user know they can check that in the respective section of the website.
+
+        User Question: {user_message}"""
 
         # Generate response using Gemini
         response = model.generate_content(prompt)
