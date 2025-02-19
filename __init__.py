@@ -12,6 +12,7 @@ import os
 import google.generativeai as genai
 import shutil
 import uuid
+import logging
 import traceback
 from flask_mail import Mail, Message
 
@@ -1493,34 +1494,106 @@ def delete_listed_product(product_id):
 @app.route('/browse-products')
 def browse_products():
     try:
-        all_products = []
-        with listed_product_manager._ListedProductManager__get_db() as db:
-            if 'farmer_products' in db:
-                for farmer_products in db['farmer_products'].values():
-                    for product_data in farmer_products.values():
-                        if product_data.get('listing_status') == 'active':
-                            # Create ListedProduct object
-                            product = ListedProduct(
-                                id=product_data['id'],
-                                name=product_data['name'],
-                                expiry_date=product_data['expiry_date'],
-                                owner=product_data['owner'],
-                                category=product_data['category'],
-                                price=product_data['price'],
-                                quantity=product_data['quantity'],
-                                unit=product_data['unit'],
-                                harvest_date=product_data['harvest_date'],
-                                description=product_data['description'],
-                                additional_info=product_data.get('additional_info'),
-                                images=product_data.get('images', []),
-                                listing_status=product_data.get('listing_status', 'active')
-                            )
-                            all_products.append(product)
-                            
-        return render_template('browse_products.html', products=all_products)
+        print("Starting browse_products route")  # Debug print
         
+        # Get filter parameters
+        search = request.args.get('search', '').lower()
+        category_filter = request.args.get('category', 'all')
+        sort_by = request.args.get('sort', 'name')
+        sort_order = request.args.get('order', 'asc')
+        
+        print(f"Filter params: search={search}, category={category_filter}, sort={sort_by}, order={sort_order}")  # Debug print
+
+        all_products = []
+        categories = set()  # To collect unique categories
+        
+        try:
+            with listed_product_manager._ListedProductManager__get_db() as db:
+                print("Opened database successfully")  # Debug print
+                
+                if 'farmer_products' not in db:
+                    print("No farmer_products in database")  # Debug print
+                    return render_template('browse_products.html', 
+                                        products=[],
+                                        categories=[],
+                                        search=search,
+                                        category_filter=category_filter,
+                                        sort_by=sort_by,
+                                        sort_order=sort_order)
+
+                # Get all products
+                for farmer_products in db.get('farmer_products', {}).values():
+                    for product_data in farmer_products.values():
+                        try:
+                            if product_data.get('listing_status') == 'active':
+                                product = ListedProduct(
+                                    id=product_data['id'],
+                                    name=product_data['name'],
+                                    expiry_date=product_data['expiry_date'],
+                                    owner=product_data['owner'],
+                                    category=product_data['category'],
+                                    price=product_data['price'],
+                                    quantity=product_data['quantity'],
+                                    unit=product_data['unit'],
+                                    harvest_date=product_data['harvest_date'],
+                                    description=product_data['description'],
+                                    additional_info=product_data.get('additional_info', ''),
+                                    images=product_data.get('images', [])
+                                )
+                                all_products.append(product)
+                                categories.add(product.category)
+                        except Exception as e:
+                            print(f"Error processing product: {str(e)}")
+                            continue
+
+        except Exception as db_error:
+            print(f"Database error: {str(db_error)}")
+            raise
+
+        print(f"Found {len(all_products)} products")  # Debug print
+
+        # Apply filters
+        filtered_products = all_products
+
+        # Apply search filter
+        if search:
+            filtered_products = [p for p in filtered_products if 
+                               search in p.name.lower() or 
+                               search in p.description.lower() or
+                               search in p.category.lower()]
+
+        # Apply category filter
+        if category_filter and category_filter != 'all':
+            filtered_products = [p for p in filtered_products if p.category == category_filter]
+
+        # Sort products
+        try:
+            reverse_order = sort_order == 'desc'
+            if sort_by == 'name':
+                filtered_products.sort(key=lambda x: x.name.lower(), reverse=reverse_order)
+            elif sort_by == 'price':
+                filtered_products.sort(key=lambda x: float(x.price), reverse=reverse_order)
+            elif sort_by == 'date':
+                filtered_products.sort(key=lambda x: datetime.strptime(x.harvest_date, "%Y-%m-%d"), 
+                                    reverse=reverse_order)
+        except Exception as sort_error:
+            print(f"Error sorting products: {str(sort_error)}")
+            # Continue with unsorted products rather than failing
+
+        print(f"Returning {len(filtered_products)} filtered products")  # Debug print
+        
+        return render_template('browse_products.html',
+                             products=filtered_products,
+                             categories=sorted(categories),
+                             search=search,
+                             category_filter=category_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
+
     except Exception as e:
         print(f"Error in browse_products: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash('Error loading products', 'danger')
         return redirect(url_for('home'))
     
@@ -1558,102 +1631,71 @@ def inject_cart():
 @login_required
 def shop():
     try:
-        # Extensive logging
-        print("SHOP ROUTE: Entering shop route")
-        print(f"Current session contents: {dict(session)}")
-        
-        # Verify username is in session
-        if 'username' not in session:
-            print("SHOP ROUTE: No username in session")
-            flash('Please log in to access the shop', 'danger')
-            return redirect(url_for('signup_login'))
-
-        username = session['username']
-        print(f"SHOP ROUTE: Accessing shop for user: {username}")
-
-        # Verify listed_product_manager exists
-        if not hasattr(app, 'listed_product_manager'):
-            app.listed_product_manager = ListedProductManager()
-        listed_product_manager = app.listed_product_manager
+        # Get filter parameters
+        search = request.args.get('search', '').lower()
+        category_filter = request.args.get('category', 'all')
+        sort_by = request.args.get('sort', 'name')
+        sort_order = request.args.get('order', 'asc')
 
         # Get all products
         all_products = []
-        try:
-            with listed_product_manager._ListedProductManager__get_db() as db:
-                print(f"SHOP ROUTE: Database keys: {list(db.keys())}")
-                
-                if 'farmer_products' not in db:
-                    print("SHOP ROUTE: No farmer_products in database")
-                    return render_template('shop.html', 
-                                         products=[],
-                                         categories=[],
-                                         search='',
-                                         sort_by='name',
-                                         sort_order='asc',
-                                         category_filter='all')
-
-                for farmer_username, farmer_products in db['farmer_products'].items():
-                    for product_id, product_data in farmer_products.items():
-                        print(f"SHOP ROUTE: Processing product: {product_id}")
-                        
-                        # Additional validation
-                        if not all(key in product_data for key in 
-                                   ['id', 'name', 'expiry_date', 'owner', 'category', 
-                                    'price', 'quantity', 'unit', 'harvest_date', 'description']):
-                            print(f"SHOP ROUTE: Incomplete product data for {product_id}")
-                            continue
-
+        with listed_product_manager._ListedProductManager__get_db() as db:
+            if 'farmer_products' in db:
+                for farmer_products in db['farmer_products'].values():
+                    for product_data in farmer_products.values():
                         if (product_data.get('listing_status') == 'active' and 
                             product_data.get('quantity', 0) > 0):
-                            try:
-                                product = ListedProduct(
-                                    id=product_data['id'],
-                                    name=product_data['name'],
-                                    expiry_date=product_data['expiry_date'],
-                                    owner=product_data['owner'],
-                                    category=product_data['category'],
-                                    price=product_data['price'],
-                                    quantity=product_data['quantity'],
-                                    unit=product_data['unit'],
-                                    harvest_date=product_data['harvest_date'],
-                                    description=product_data['description'],
-                                    additional_info=product_data.get('additional_info', ''),
-                                    images=product_data.get('images', []),
-                                    listing_status=product_data.get('listing_status', 'active')
-                                )
-                                all_products.append(product)
-                            except Exception as product_error:
-                                print(f"SHOP ROUTE: Error processing product {product_id}: {product_error}")
-                                import traceback
-                                traceback.print_exc()
-                                continue
+                            product = ListedProduct(
+                                id=product_data['id'],
+                                name=product_data['name'],
+                                expiry_date=product_data['expiry_date'],
+                                owner=product_data['owner'],
+                                category=product_data['category'],
+                                price=product_data['price'],
+                                quantity=product_data['quantity'],
+                                unit=product_data['unit'],
+                                harvest_date=product_data['harvest_date'],
+                                description=product_data['description'],
+                                additional_info=product_data.get('additional_info'),
+                                images=product_data.get('images', [])
+                            )
+                            all_products.append(product)
 
-        except Exception as db_error:
-            print(f"SHOP ROUTE: Database error: {db_error}")
-            import traceback
-            traceback.print_exc()
-            flash('Error accessing product database', 'danger')
-            return redirect(url_for('customer_dashboard'))
+        # Apply search filter
+        if search:
+            all_products = [p for p in all_products if 
+                          search in p.name.lower() or 
+                          search in p.description.lower() or
+                          search in p.category.lower()]
 
-        print(f"SHOP ROUTE: Total products found: {len(all_products)}")
+        # Apply category filter
+        if category_filter != 'all':
+            all_products = [p for p in all_products if p.category == category_filter]
 
-        # Get unique categories
+        # Sort products
+        reverse_order = sort_order == 'desc'
+        if sort_by == 'name':
+            all_products.sort(key=lambda x: x.name.lower(), reverse=reverse_order)
+        elif sort_by == 'price':
+            all_products.sort(key=lambda x: float(x.price), reverse=reverse_order)
+        elif sort_by == 'date':
+            all_products.sort(key=lambda x: datetime.strptime(x.created_at, "%Y-%m-%d %H:%M:%S"), 
+                            reverse=reverse_order)
+
+        # Get unique categories for filter dropdown
         categories = sorted(set(p.category for p in all_products))
-        print(f"SHOP ROUTE: Categories found: {categories}")
 
         return render_template('shop.html', 
                              products=all_products,
                              categories=categories,
-                             search='',
-                             sort_by='name',
-                             sort_order='asc',
-                             category_filter='all')
+                             search=search,
+                             category_filter=category_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
 
     except Exception as e:
-        print(f"SHOP ROUTE: CRITICAL ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        flash('An unexpected error occurred. Please try again later.', 'danger')
+        print(f"Error in shop: {str(e)}")
+        flash('Error loading products', 'danger')
         return redirect(url_for('customer_dashboard'))
 
 @app.route('/cart')
@@ -1763,147 +1805,423 @@ def remove_from_cart():
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Failed to remove item from cart'}), 500
-
-# In __init__.py - Update the chat_message route
+    
 @app.route('/chat/message', methods=['POST'])
-@login_required
 def chat_message():
     try:
         data = request.get_json()
-        user_message = data.get('message', '')
+        user_message = data.get('message', '').lower().strip()
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
 
-        # Get user context
+        # Get user context if logged in
         username = session.get('username')
         user_role = session.get('role')
+        # Handle account-specific queries first
+        if username and user_role:
+            if any(keyword in user_message for keyword in ['order', 'orders', 'purchase', 'delivery']):
+                order_history = _get_order_history(username, user_role)
+                return jsonify({'response': order_history})
         
-        # Build user context based on role
-        if user_role == 'Farmer':
-            # Get farmer's products and orders
-            products = listed_product_manager.get_farmer_products(username)
-            expiring_products = product_manager.get_user_products(username)
-            
-            # Format products info
-            product_info = []
-            for p in products:
-                product_info.append(f"- {p.name}: {p.quantity} {p.unit} at ${p.price} per {p.unit}")
-            
-            # Format expiring products
-            expiring_info = []
-            for p in expiring_products:
-                expiring_info.append(f"- {p.name}: Expires on {p.expiry_date} (Status: {p.status})")
-
-            user_context = f"""
-            You have access to this farmer's information:
-            Username: {username}
-            Listed Products:
-            {chr(10).join(product_info) if product_info else "No products listed"}
-            
-            Expiring Products Tracker:
-            {chr(10).join(expiring_info) if expiring_info else "No products in tracker"}
-            """
-
-        elif user_role == 'Customer':
-            # Get customer's cart and orders
-            cart = cart_manager.get_cart(username)
-            cart_items = cart.get_items()
-            
-            # Format cart info
-            cart_info = []
-            for item in cart_items:
-                cart_info.append(f"- {item.name}: {item.quantity} {item.unit} at ${item.price} per {item.unit}")
-
-            # Get expiring products
-            expiring_products = product_manager.get_user_products(username)
-            expiring_info = []
-            for p in expiring_products:
-                expiring_info.append(f"- {p.name}: Expires on {p.expiry_date} (Status: {p.status})")
-
-            user_context = f"""
-            You have access to this customer's information:
-            Username: {username}
-            Current Cart:
-            {chr(10).join(cart_info) if cart_info else "Cart is empty"}
-            
-            Expiring Products Tracker:
-            {chr(10).join(expiring_info) if expiring_info else "No products in tracker"}
-            """
-        else:
-            user_context = "No specific user information available."
-
-        # Add website navigation paths
-        navigation_paths = {
-            'Farmer': {
-                'list_product': '/farmer/list-product',
-                'my_listings': '/farmer/my-listings',
-                'expiry_tracker': '/farmer/expiry-tracker',
-                'orders': '/farmer/orders'
-            },
-            'Customer': {
-                'shop': '/shop',
-                'cart': '/cart',
-                'expiry_tracker': '/customer/expiry-tracker',
-                'orders': '/customer/order-tracker'
-            }
+        # Define account-related keywords
+        account_keywords = {
+            'order': ['order', 'purchase', 'bought', 'buy'],
+            'notification': ['notification', 'alert', 'message'],
+            'cart': ['cart', 'basket', 'shopping'],
+            'expiry': ['expiry', 'expire', 'expired', 'fresh'],
+            'review': ['review', 'rating', 'feedback'],
+            'profile': ['profile', 'account', 'settings'],
+            'dashboard': ['dashboard', 'overview', 'summary']
         }
-
-        # Add website paths to prompt
-        website_paths = navigation_paths.get(user_role, {})
-        paths_context = f"""
-        You can direct users to these pages:
-        Farmer:
-        - To list a new product: {website_paths.get('list_product')}
-        - To view your listings: {website_paths.get('my_listings')}
-        - To check expiry tracker: {website_paths.get('expiry_tracker')}
-        - To manage orders: {website_paths.get('orders')}
         
-        Customer:
-        - To browse products: {website_paths.get('shop')}
-        - To view cart: {website_paths.get('cart')}
-        - To check expiry tracker: {website_paths.get('expiry_tracker')}
-        - To track orders: {website_paths.get('orders')}
-        """
-
-        prompt = f"""You are an agricultural assistant for GrinSOIL, a platform connecting farmers and customers. 
-        You have access to the user's account information and can answer questions about their activities on the platform.
-
-        User Role: {user_role}
-        {user_context}
-        {paths_context}
-
-        When users express interest in an action:
-        1. Provide them with the direct link to the relevant page
-        2. Give them a brief guide on what they'll find there
-        3. Offer any relevant tips for that section
-
-        For example, if they want to list a product, say something like:
-        "You can list a new product at [link]. On that page, you'll be able to:
-        - Add product details
-        - Set prices
-        - Upload images
-        - Manage inventory"
-
-        Always format links as HTML anchor tags, for example: <a href="/farmer/list-product">click here</a>
-
-        Only use the information provided above to answer account-specific questions.
-        If you don't have certain information, let the user know they can check that in the respective section of the website.
-
-        User Question: {user_message}"""
-
+        # Check if query is account-related
+        is_account_query = any(
+            keyword in user_message 
+            for keywords in account_keywords.values() 
+            for keyword in keywords
+        )
+        
+        # Handle account-related queries if user is logged in
+        if is_account_query and username:
+            # Extract context based on query type
+            context = None
+            
+            # Context extraction function remains the same
+            def extract_context(user_message):
+                extractors = {
+                    'expiry': lambda: _get_expiry_tracker_items(username),
+                    'notification': lambda: _get_notifications(username, user_role),
+                    'cart': lambda: _get_cart_items(username),
+                    'order': lambda: _get_order_history(username, user_role),
+                    'dashboard': lambda: _get_dashboard_overview(username, user_role),
+                    'review': lambda: _get_user_reviews(username)
+                }
+                
+                for category, keywords in account_keywords.items():
+                    if any(keyword in user_message for keyword in keywords):
+                        return extractors.get(category, lambda: None)()
+                return None
+            
+            # Get account-specific context
+            context = extract_context(user_message)
+            
+            if context:
+                return jsonify({'response': context})
+        
+        # If not account-related or user not logged in, use Gemini for general queries
+        context_prompt = """You are an AI assistant specialized in food and agriculture. 
+        Respond to queries about:
+        - Agricultural practices and crop cultivation
+        - Food production and nutrition
+        - Sustainable farming methods
+        - Food science and safety
+        - Plant biology and growth
+        - Agricultural technology and innovation
+        - Food storage and preservation
+        - Cooking techniques and tips
+        - Ingredient substitutions
+        - Food pairing suggestions
+        - Seasonal cooking
+        - Traditional and modern cooking methods
+        
+        If the user is logged in, also provide personalized suggestions related to:
+        - Food expiry tracking
+        - Shopping for fresh produce
+        - Managing food inventory
+        - Sustainable consumption practices
+        
+        Keep responses concise, clear, and scientifically accurate.
+        If a query is outside these domains, politely redirect to food and agriculture topics."""
+        
+        # Add user context to prompt if available
+        if username:
+            context_prompt += f"\n\nUser Context: {user_role} user"
+        
         # Generate response using Gemini
-        response = model.generate_content(prompt)
-        
-        return jsonify({
-            'response': response.text
-        })
-
+        full_prompt = f"{context_prompt}\n\nUser Query: {user_message}"
+        try:
+            response = model.generate_content(full_prompt)
+            if not response or not response.text:
+                return jsonify({
+                    'response': "I'm having trouble understanding. Could you rephrase your question?"
+                })
+            return jsonify({'response': response.text.strip()})
+            
+        except Exception as api_error:
+            print(f"Gemini API Error: {str(api_error)}")
+            return jsonify({
+                'response': "I'm experiencing technical difficulties. Please try again."
+            })
+            
     except Exception as e:
         print(f"Error in chat_message: {str(e)}")
-        return jsonify({
-            'error': 'Failed to generate response'
-        }), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to process your request'}), 500
+
+# Helper functions for context extraction
+def _get_expiry_tracker_items(username):
+    products = product_manager.get_user_products(username)
+    if not products:
+        return "You have no items in your expiry tracker. Would you like to learn how to start tracking your food expiry dates?"
+    
+    items_summary = "\n".join([
+        f"- {p.name} (Expires: {p.expiry_date}, Status: {p.status})" 
+        for p in products
+    ])
+    return f"Your Expiry Tracker Items:\n{items_summary}"
+
+def _get_notifications(username, user_role):
+    notifications = notification_manager.get_recent_notifications(user_role, username, limit=5)
+    if not notifications:
+        return "You have no recent notifications. I can help you understand how notifications work in our system."
+    
+    notif_summary = "\n".join([
+        f"- {n.title}: {n.content[:50]}..." 
+        for n in notifications
+    ])
+    return f"Recent Notifications:\n{notif_summary}"
+
+def _get_cart_items(username):
+    cart = cart_manager.get_cart(username)
+    if not cart.items:
+        return "Your cart is empty. Would you like to browse our available products?"
+    
+    cart_summary = "\n".join([
+        f"- {item.name}: {item.quantity} {item.unit} at ${item.price} each" 
+        for item in cart.get_items()
+    ])
+    return f"Your Cart Items:\n{cart_summary}\nTotal: ${cart.total:.2f}"
+
+def _get_order_history(username, user_role):
+    """
+    Get detailed order history based on user role (Farmer or Customer)
+    """
+    try:
+        with shelve.open('orders_db', 'r') as orders_db:
+            all_orders = orders_db.get('orders', {})
+            
+            if user_role == 'Customer':
+                # Get customer orders
+                user_orders = []
+                for order_id, order_data in all_orders.items():
+                    if order_data.get('username') == username:
+                        # Get farmer statuses for this order
+                        farmer_statuses = order_data.get('farmer_statuses', {})
+                        
+                        # Determine overall order status
+                        status_priority = {'Processing': 1, 'Completed': 2}
+                        overall_status = max(
+                            farmer_statuses.values(),
+                            key=lambda s: status_priority.get(s, 0)
+                        ) if farmer_statuses else 'Processing'
+                        
+                        formatted_order = {
+                            'order_id': order_id,
+                            'created_at': order_data.get('created_at', 'N/A'),
+                            'total': float(order_data.get('total', 0)),
+                            'status': overall_status,
+                            'items_count': len(order_data.get('items', [])),
+                            'farmer_statuses': farmer_statuses
+                        }
+                        user_orders.append(formatted_order)
+                
+                if not user_orders:
+                    return "You haven't placed any orders yet. Would you like to browse our available products?"
+                
+                # Sort by date, most recent first
+                user_orders.sort(
+                    key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"),
+                    reverse=True
+                )
+                
+                # Format response for customer
+                recent_orders = user_orders[:3]  # Show 3 most recent orders
+                order_summary = "\n".join([
+                    f"📦 Order {order['order_id']}:\n"
+                    f"   - Date: {order['created_at']}\n"
+                    f"   - Items: {order['items_count']}\n"
+                    f"   - Total: ${order['total']:.2f}\n"
+                    f"   - Status: {order['status']}\n"
+                    f"   - Farmer Status Updates:\n     " + 
+                    "\n     ".join([f"{farmer}: {status}" 
+                                  for farmer, status in order['farmer_statuses'].items()])
+                    for order in recent_orders
+                ])
+                
+                return f"Your Recent Orders:\n\n{order_summary}\n\nTotal Orders: {len(user_orders)}"
+                
+            elif user_role == 'Farmer':
+                # Get farmer orders
+                farmer_orders = []
+                for order_id, order_data in all_orders.items():
+                    farmer_statuses = order_data.get('farmer_statuses', {})
+                    
+                    # Check if this farmer is involved in the order
+                    if username in farmer_statuses:
+                        # Extract only this farmer's items
+                        farmer_items = []
+                        order_total = 0
+                        
+                        for item in order_data.get('items', []):
+                            try:
+                                product_id = item.get('product_id')
+                                if product_id:
+                                    product = listed_product_manager.get_product(product_id)
+                                    if product and product.owner == username:
+                                        farmer_items.append(item)
+                                        order_total += float(item.get('subtotal', 0))
+                            except Exception as e:
+                                print(f"Error processing item in farmer orders: {str(e)}")
+                                continue
+                        
+                        if farmer_items:  # Only include orders with items from this farmer
+                            formatted_order = {
+                                'order_id': order_id,
+                                'created_at': order_data.get('created_at', 'N/A'),
+                                'customer': order_data.get('username', 'Unknown'),
+                                'items_count': len(farmer_items),
+                                'total': order_total,
+                                'status': farmer_statuses.get(username, 'Processing'),
+                                'shipping_info': order_data.get('shipping_info', {})
+                            }
+                            farmer_orders.append(formatted_order)
+                
+                if not farmer_orders:
+                    return "You don't have any orders to fulfill yet."
+                
+                # Sort by date, most recent first
+                farmer_orders.sort(
+                    key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"),
+                    reverse=True
+                )
+                
+                # Format response for farmer
+                recent_orders = farmer_orders[:3]  # Show 3 most recent orders
+                order_summary = "\n".join([
+                    f"🚚 Order {order['order_id']}:\n"
+                    f"   - Date: {order['created_at']}\n"
+                    f"   - Customer: {order['customer']}\n"
+                    f"   - Items to Fulfill: {order['items_count']}\n"
+                    f"   - Total Value: ${order['total']:.2f}\n"
+                    f"   - Status: {order['status']}\n"
+                    f"   - Shipping: {order['shipping_info'].get('name', 'N/A')}, "
+                    f"{order['shipping_info'].get('address', 'N/A')}"
+                    for order in recent_orders
+                ])
+                
+                return f"Your Orders to Fulfill:\n\n{order_summary}\n\nTotal Orders: {len(farmer_orders)}"
+            
+            else:
+                return "Unable to retrieve orders. Please check your account status."
+            
+    except Exception as e:
+        print(f"Error in _get_order_history: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return "I encountered an error while retrieving your order information. Please try again later."
+
+def _get_dashboard_overview(username, user_role):
+    try:
+        product_counts = product_manager.get_status_counts(username)
+        notification_counts = notification_manager.get_notification_counts(user_role, username)
+        
+        overview = f"""Dashboard Overview:
+- Fresh Products: {product_counts.get('fresh', 0)}
+- Expiring Soon: {product_counts.get('expiring-soon', 0)}
+- Expired Products: {product_counts.get('expired', 0)}
+- Unread Notifications: {notification_counts.get('unread', 0)}"""
+        
+        if user_role == 'Farmer':
+            # Add farmer-specific information
+            listed_products = listed_product_manager.get_farmer_products(username)
+            active_listings = sum(1 for p in listed_products if p.listing_status == 'active')
+            overview += f"\n- Active Product Listings: {active_listings}"
+            
+        return overview
+        
+    except Exception as e:
+        print(f"Error getting dashboard overview: {str(e)}")
+        return "Unable to retrieve dashboard information at the moment."
+
+def _get_user_reviews(username):
+    reviews = review_manager.get_user_reviews(username)
+    if not reviews:
+        return "You haven't written any reviews yet. Would you like to share your experience?"
+    
+    review_summary = "\n".join([
+        f"- {review.created_at}: {review.content[:100]}..." 
+        for review in reviews[:3]
+    ])
+    return f"Your Recent Reviews:\n{review_summary}"
+
+def get_account_information(username, user_role, message):
+    """Retrieve account-specific information based on query"""
+    # Orders query
+    if any(keyword in message for keyword in ['order', 'purchase']):
+        try:
+            with shelve.open('orders_db', 'r') as orders_db:
+                all_orders = orders_db.get('orders', {})
+                user_orders = [order for order in all_orders.values() if order.get('username') == username]
+                
+                if not user_orders:
+                    return "You have no orders in your history."
+                
+                # Summarize orders
+                order_summary = f"You have {len(user_orders)} total orders:\n"
+                for i, order in enumerate(user_orders[-3:], 1):  # Show last 3 orders
+                    order_summary += f"\nOrder {i}:\n"
+                    order_summary += f"Order ID: {order.get('order_id', 'N/A')}\n"
+                    order_summary += f"Date: {order.get('created_at', 'N/A')}\n"
+                    order_summary += f"Total: ${order.get('total', 0):.2f}\n"
+                    order_summary += f"Status: {order.get('status', 'Unknown')}\n"
+                
+                return order_summary
+        except Exception as e:
+            print(f"Error retrieving orders: {str(e)}")
+            return "Unable to retrieve order information."
+    
+    # Notifications query
+    elif 'notification' in message:
+        try:
+            notification_manager = NotificationManager()
+            notifications = notification_manager.get_notifications_for_role(user_role, username)
+            
+            if not notifications:
+                return "You have no notifications."
+            
+            # Summarize notifications
+            notification_summary = f"You have {len(notifications)} total notifications:\n"
+            for i, notification in enumerate(notifications[:3], 1):  # Show last 3 notifications
+                notification_summary += f"\nNotification {i}:\n"
+                notification_summary += f"Title: {notification.title}\n"
+                notification_summary += f"Content: {notification.content[:100]}...\n"
+                notification_summary += f"Date: {notification.created_at}\n"
+            
+            return notification_summary
+        except Exception as e:
+            print(f"Error retrieving notifications: {str(e)}")
+            return "Unable to retrieve notification information."
+    
+    # Product listings (for Farmers)
+    elif user_role == 'Farmer' and any(keyword in message for keyword in ['product', 'listing']):
+        try:
+            listed_product_manager = ListedProductManager()
+            products = listed_product_manager.get_farmer_products(username)
+            
+            if not products:
+                return "You have no product listings."
+            
+            # Summarize product listings
+            product_summary = f"You have {len(products)} product listings:\n"
+            for i, product in enumerate(products[:3], 1):  # Show first 3 products
+                product_summary += f"\nProduct {i}:\n"
+                product_summary += f"Name: {product.name}\n"
+                product_summary += f"Quantity: {product.quantity} {product.unit}\n"
+                product_summary += f"Price: ${product.price}/{product.unit}\n"
+                product_summary += f"Status: {product.listing_status}\n"
+            
+            return product_summary
+        except Exception as e:
+            print(f"Error retrieving product listings: {str(e)}")
+            return "Unable to retrieve product listing information."
+    
+    # Reviews query
+    elif 'review' in message:
+        try:
+            review_manager = ReviewManager()
+            reviews = review_manager.get_user_reviews(username)
+            
+            if not reviews:
+                return "You have no reviews."
+            
+            # Summarize reviews
+            review_summary = f"You have {len(reviews)} reviews:\n"
+            for i, review in enumerate(reviews[:3], 1):  # Show last 3 reviews
+                review_summary += f"\nReview {i}:\n"
+                review_summary += f"Content: {review.content[:100]}...\n"
+                review_summary += f"Date: {review.created_at}\n"
+            
+            return review_summary
+        except Exception as e:
+            print(f"Error retrieving reviews: {str(e)}")
+            return "Unable to retrieve review information."
+    
+    # General account information
+    else:
+        return f"""Account Information:
+Username: {username}
+Role: {user_role}
+
+You can ask about:
+- Orders
+- Notifications
+- Product Listings (Farmers)
+- Reviews"""
+
+
+
     
 """checkout"""
 @app.route('/checkout')

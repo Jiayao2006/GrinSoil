@@ -2,6 +2,8 @@
 
 {% block title %}Browse Products{% endblock %}
 
+
+
 {% block content %}
 <div class="container-fluid px-4 py-4">
     <!-- Header Section -->
@@ -22,49 +24,126 @@
     </div>
 
     <!-- Filters Section -->
+    <!-- Replace the existing search and filter section with this in both templates -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form id="filterForm" method="GET" class="row g-3">
-                <!-- Search -->
-                <div class="col-md-4">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light">
-                            <i class="fas fa-search"></i>
-                        </span>
-                        <input type="text" class="form-control" id="search" name="search" 
-                               placeholder="Search products..." value="{{ search if search }}">
+            <div class="row g-3">
+                <!-- Search Bar -->
+                <div class="col-md-6">
+                    <form id="searchForm" class="search-form" onsubmit="handleSearch(event)">
+                        <div class="search-wrapper">
+                            <input type="text" 
+                                id="searchInput" 
+                                name="search" 
+                                class="form-control search-input" 
+                                placeholder="Search products..."
+                                value="{{ search if search else '' }}">
+                            <button type="submit" class="search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="col-md-6">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <!-- Category Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" 
+                                    type="button" 
+                                    id="categoryDropdown" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                <i class="fas fa-tag me-1"></i>
+                                {{ category_filter|title if category_filter else 'All Categories' }}
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="categoryDropdown">
+                                <li>
+                                    <a class="dropdown-item {% if category_filter == 'all' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateFilter('category', 'all')">
+                                        All Categories
+                                    </a>
+                                </li>
+                                {% for category in categories %}
+                                <li>
+                                    <a class="dropdown-item {% if category == category_filter %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateFilter('category', '{{ category }}')">
+                                        {{ category|title }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <!-- Sort Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" 
+                                    type="button" 
+                                    id="sortDropdown" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                <i class="fas fa-sort me-1"></i>
+                                Sort
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'name' and sort_order == 'asc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('name', 'asc')">
+                                        Name (A-Z)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'name' and sort_order == 'desc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('name', 'desc')">
+                                        Name (Z-A)
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'price' and sort_order == 'asc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('price', 'asc')">
+                                        Price (Low to High)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'price' and sort_order == 'desc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('price', 'desc')">
+                                        Price (High to Low)
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'date' and sort_order == 'desc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('date', 'desc')">
+                                        Newest First
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if sort_by == 'date' and sort_order == 'asc' %}active{% endif %}" 
+                                    href="#" 
+                                    onclick="updateSort('date', 'asc')">
+                                        Oldest First
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Clear Filters Button -->
+                        <button class="btn btn-outline-danger" onclick="clearFilters()">
+                            <i class="fas fa-times me-1"></i>
+                            Clear
+                        </button>
                     </div>
                 </div>
-
-                <!-- Category Filter -->
-                <div class="col-md-3">
-                    <select class="form-select" name="category">
-                        <option value="all" {% if not category_filter or category_filter == 'all' %}selected{% endif %}>All Categories</option>
-                        {% for category in categories %}
-                        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
-                            {{ category|title }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Sort Options -->
-                <div class="col-md-3">
-                    <select class="form-select" name="sort">
-                        <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Sort by Date</option>
-                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Sort by Name</option>
-                        <option value="price" {% if sort_by == 'price' %}selected{% endif %}>Sort by Price</option>
-                    </select>
-                </div>
-
-                <!-- Sort Order -->
-                <div class="col-md-2">
-                    <select class="form-select" name="order">
-                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Newest First</option>
-                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Oldest First</option>
-                    </select>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -196,6 +275,68 @@
 
 {% block extra_js %}
 <script>
+    // Add this to your JavaScript
+function handleSearch(event) {
+    event.preventDefault();
+    const searchInput = document.getElementById('searchInput');
+    const currentUrl = new URL(window.location.href);
+    
+    // Update search parameter
+    if (searchInput.value.trim()) {
+        currentUrl.searchParams.set('search', searchInput.value.trim());
+    } else {
+        currentUrl.searchParams.delete('search');
+    }
+    
+    window.location.href = currentUrl.toString();
+}
+
+function updateFilter(type, value) {
+    const currentUrl = new URL(window.location.href);
+    
+    if (value === 'all') {
+        currentUrl.searchParams.delete(type);
+    } else {
+        currentUrl.searchParams.set(type, value);
+    }
+    
+    window.location.href = currentUrl.toString();
+}
+
+function updateSort(sortBy, order) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('sort', sortBy);
+    currentUrl.searchParams.set('order', order);
+    window.location.href = currentUrl.toString();
+}
+
+function clearFilters() {
+    const currentUrl = new URL(window.location.href);
+    // Remove all filter parameters
+    currentUrl.searchParams.delete('search');
+    currentUrl.searchParams.delete('category');
+    currentUrl.searchParams.delete('sort');
+    currentUrl.searchParams.delete('order');
+    window.location.href = currentUrl.toString();
+}
+
+// Only handle search when pressing enter or clicking the search button
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('searchForm');
+    const searchInput = document.getElementById('searchInput');
+    
+    // Prevent form submission on input changes
+    searchInput.addEventListener('input', function(e) {
+        e.preventDefault();
+    });
+    
+    // Handle enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            handleSearch(e);
+        }
+    });
+});
     // Handle form submissions for filtering and sorting
     document.addEventListener('DOMContentLoaded', function() {
         const filterForm = document.getElementById('filterForm');
