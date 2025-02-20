@@ -212,7 +212,8 @@ class FormValidator {
         }
 
         // Email format validation
-        const formatRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // In enhanced-validation.js, update email validation regex
+        const formatRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
         const hasValidFormat = formatRegex.test(email);
         if (emailFormatCheck) {
             emailFormatCheck.innerHTML = `${hasValidFormat ? '✅' : '❌'} Valid email format`;

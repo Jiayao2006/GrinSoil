@@ -32,14 +32,55 @@ genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-pro')
 
 # Email configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'grinsoil05@gmail.com'  # Use environment variables for security
-app.config['MAIL_PASSWORD'] = 'engp zgbl xtuc vbsx'     # Use app password for Gmail
-app.config['MAIL_DEFAULT_SENDER'] = ('GrinSOIL Verification', 'your_email@gmail.com')
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+# app.config['MAIL_PORT'] = 587
+# app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USERNAME'] = 'grinsoil05@gmail.com'  # Use environment variables for security
+# app.config['MAIL_PASSWORD'] = 'ycld ynid hhri xvhl'     # Use app password for Gmail
+# app.config['MAIL_DEFAULT_SENDER'] = ('GrinSOIL Verification', 'grinsoil05@gmail.com')
 
+# # Update these settings in __init__.py
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+# app.config['MAIL_PORT'] = 587
+# app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USERNAME'] = 'grinsoil05@gmail.com'
+# app.config['MAIL_DEFAULT_SENDER'] = 'grinsoil05@gmail.com'
+# app.config['MAIL_PASSWORD'] = 'mmqf njws bhcj ffsf'  # We'll generate this
+
+
+
+
+# Email configuration with environment variables for security
+app.config.update(
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME', 'grinsoil05@gmail.com'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD', 'mmqf njws bhcj ffsf'),  # Replace with your app password
+    MAIL_DEFAULT_SENDER=('GrinSOIL', 'grinsoil05@gmail.com'),
+    MAIL_MAX_EMAILS=None,
+    MAIL_ASCII_ATTACHMENTS=False,
+    MAIL_SUPPRESS_SEND=False,
+    MAIL_DEBUG=True  # Set to False in production
+)
+
+# Initialize Flask-Mail
 mail = Mail(app)
+
+# Add error handling for mail sending
+def send_email_with_retry(msg, max_retries=3):
+    """Send email with retry mechanism"""
+    for attempt in range(max_retries):
+        try:
+            mail.send(msg)
+            return True
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                print("All retry attempts failed")
+                raise
+            continue
+
 
 # In your __init__.py
 @app.before_request
@@ -204,79 +245,79 @@ def phone_verified(f):
 def send_otp():
     try:
         data = request.get_json()
-        phone = data.get('phone')
-        email = data.get('email')  # Get email if provided
+        email = data.get('email')
         
-        # Determine verification method (phone or email)
-        use_email = bool(email and not phone)
-        identifier = email if use_email else phone
-        
-        if not identifier:
-            return jsonify({'error': 'Email or phone number is required'}), 400
-        
-        # Check if can resend OTP
-        if not otp_manager.can_resend_otp(identifier):
-            return jsonify({'error': 'Please wait 30 seconds before requesting a new OTP'}), 429
-        
-        # Generate and store OTP
-        otp = otp_manager.generate_otp()
-        otp_manager.store_otp(identifier, otp)
-        
-        # Store identifier in session
-        if use_email:
-            session['verification_email'] = email
-        else:
-            session['phone_number'] = phone
-        
-        # Send OTP via email or show in console for phone
-        if use_email:
-            try:
-                msg = Message(
-                    subject="Your GrinSOIL Verification Code",
-                    recipients=[email],
-                    html=f"""
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                        <div style="text-align: center; margin-bottom: 20px;">
-                            <h2 style="color: #198754;">GrinSOIL Verification</h2>
-                        </div>
-                        <p>Hello,</p>
-                        <p>Your verification code is:</p>
-                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; margin: 20px 0;">
-                            {otp}
-                        </div>
-                        <p>This code will expire in <strong>3 minutes</strong>.</p>
-                        <p>If you didn't request this code, please ignore this email.</p>
-                        <div style="margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px; font-size: 12px; color: #6c757d;">
-                            <p>© GrinSOIL. All rights reserved.</p>
-                        </div>
-                    </div>
-                    """
-                )
-                mail.send(msg)
-                print(f"Development Mode - Email OTP sent to {email}: {otp}")
-            except Exception as email_error:
-                print(f"Error sending email: {str(email_error)}")
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Failed to send verification email: {str(email_error)}'
-                }), 500
-        else:
-            # For development, print to console for phone verification
-            print(f"Development Mode - OTP for {phone}: {otp}")
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'OTP sent successfully to your {"email" if use_email else "phone"}',
-            'expiresIn': 180  # 3 minutes in seconds
-        }), 200
-        
-    except Exception as e:
-        print(f"Error in send_otp: {str(e)}")
-        return jsonify({
-            'error': 'An unexpected error occurred',
-            'details': str(e)
-        }), 500
+        if not email:
+            return jsonify({
+                'status': 'error', 
+                'message': 'Email is required'
+            }), 400
 
+        # Validate email format on server-side
+        import re
+        email_regex = re.compile(r'^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$')
+        if not email_regex.match(email):
+            return jsonify({
+                'status': 'error', 
+                'message': 'Invalid email format'
+            }), 400
+
+        # Generate OTP
+        otp = otp_manager.generate_otp()
+        
+        # Additional email domain validation (optional)
+        domain = email.split('@')[-1]
+        allowed_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']
+        if domain not in allowed_domains:
+            return jsonify({
+                'status': 'error', 
+                'message': f'Email domain {domain} is not supported'
+            }), 400
+
+        # Create email message
+        msg = Message(
+            subject="GrinSOIL Email Verification",
+            recipients=[email],
+            html=f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #198754;">GrinSOIL Email Verification</h2>
+                <p>Your verification code is:</p>
+                <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; font-family: monospace;">
+                    {otp}
+                </div>
+                <p>This code will expire in 3 minutes.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
+            </div>
+            """
+        )
+        
+        # Store OTP first to ensure valid request
+        otp_manager.store_otp(email, otp)
+        
+        # Send email with retry mechanism
+        try:
+            send_email_with_retry(msg)
+            return jsonify({
+                'status': 'success',
+                'message': 'Verification code sent to your email',
+                'expiresIn': 180  # 3 minutes in seconds
+            })
+        except Exception as smtp_error:
+            print(f"SMTP Error: {str(smtp_error)}")
+            # Remove stored OTP if email sending fails
+            otp_manager.delete_otp(email)
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to send verification email. Please try again.'
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in send-otp: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'message': 'An unexpected error occurred'
+        }), 500
+    
 @app.route('/verify-otp', methods=['POST'])
 def verify_otp():
     try:

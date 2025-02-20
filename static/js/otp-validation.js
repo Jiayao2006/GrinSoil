@@ -16,20 +16,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('signup-email');
             const email = emailInput.value.trim();
             
+            // More robust email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+            
             if (!email) {
-                alert('Please enter a valid email address');
+                alert('Please enter an email address');
                 return;
             }
             
-            // Basic email validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
-                alert('Please enter a valid email address');
+                alert('Please enter a valid email address (e.g., user@example.com)');
                 return;
             }
             
-            // Disable button to prevent multiple clicks
+            // Disable button and show loading state
             this.disabled = true;
+            const originalHTML = this.innerHTML;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
             
             try {
@@ -41,9 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const data = await response.json();
                 
-                // Re-enable button with appropriate text
+                // Always restore button state
                 this.disabled = false;
-                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Verify Email';
+                this.innerHTML = originalHTML;
                 
                 if (data.status === 'success') {
                     otpSection.classList.remove('d-none');
@@ -55,13 +57,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     alert('Verification code has been sent to your email');
                 } else {
-                    alert(data.message || 'Failed to send verification code. Please try again.');
+                    // More specific error handling
+                    const errorMessage = data.message || 'Failed to send verification code';
+                    console.error('OTP Send Error:', errorMessage);
+                    alert(errorMessage);
                 }
             } catch (error) {
-                console.error('Error in verification code request:', error);
+                console.error('Network or server error:', error);
                 this.disabled = false;
-                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Verify Email';
-                alert('Failed to send verification code. Please try again.');
+                this.innerHTML = originalHTML;
+                
+                // More user-friendly error message
+                const errorMessage = error.message || 'Network error. Please check your connection.';
+                alert(`Failed to send verification code: ${errorMessage}`);
             }
         });
     }
