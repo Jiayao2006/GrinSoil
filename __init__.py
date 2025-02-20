@@ -267,7 +267,7 @@ def send_otp():
         
         # Additional email domain validation (optional)
         domain = email.split('@')[-1]
-        allowed_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']
+        allowed_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'mymail.nyp.edu.sg']
         if domain not in allowed_domains:
             return jsonify({
                 'status': 'error', 
