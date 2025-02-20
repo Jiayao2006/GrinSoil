@@ -23,62 +23,59 @@
 
     <!-- Search and Filter Section -->
     <!-- Replace the existing search and filter section with this in both templates -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <div class="row g-3">
-            <!-- Search Bar -->
-            <div class="col-md-6">
-                <form id="searchForm" class="search-form" onsubmit="handleSearch(event)">
-                    <div class="search-wrapper">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="search-container">
+                <!-- Search Bar -->
+                <div class="search-wrapper">
+                    <form id="searchForm" class="search-form" onsubmit="handleSearch(event)">
                         <input type="text" 
                                id="searchInput" 
                                name="search" 
-                               class="form-control search-input" 
+                               class="search-input" 
                                placeholder="Search products..."
                                value="{{ search if search else '' }}">
                         <button type="submit" class="search-button">
                             <i class="fas fa-search"></i>
                         </button>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
 
-            <!-- Filter Buttons -->
-            <div class="col-md-6">
-                <div class="d-flex gap-2 justify-content-end">
-                    <!-- Category Dropdown -->
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle" 
-                                type="button" 
-                                id="categoryDropdown" 
-                                data-bs-toggle="dropdown" 
-                                aria-expanded="false">
-                            <i class="fas fa-tag me-1"></i>
-                            {{ category_filter|title if category_filter else 'All Categories' }}
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="categoryDropdown">
-                            <li>
-                                <a class="dropdown-item {% if category_filter == 'all' %}active{% endif %}" 
-                                   href="#" 
-                                   onclick="updateFilter('category', 'all')">
-                                    All Categories
-                                </a>
-                            </li>
-                            {% for category in categories %}
-                            <li>
-                                <a class="dropdown-item {% if category == category_filter %}active{% endif %}" 
-                                   href="#" 
-                                   onclick="updateFilter('category', '{{ category }}')">
-                                    {{ category|title }}
-                                </a>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <!-- Category Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                            type="button" 
+                            id="categoryDropdown" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false">
+                        <i class="fas fa-tag me-1"></i>
+                        {{ category_filter|title if category_filter else 'All' }}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="categoryDropdown">
+                        <li>
+                            <a class="dropdown-item {% if category_filter == 'all' %}active{% endif %}" 
+                               href="#" 
+                               onclick="updateFilter('category', 'all')">
+                                All Categories
+                            </a>
+                        </li>
+                        {% for category in categories %}
+                        <li>
+                            <a class="dropdown-item {% if category == category_filter %}active{% endif %}" 
+                               href="#" 
+                               onclick="updateFilter('category', '{{ category }}')">
+                                {{ category|title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
 
                     <!-- Sort Dropdown -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle" 
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
                                 type="button" 
                                 id="sortDropdown" 
                                 data-bs-toggle="dropdown" 
@@ -143,7 +140,7 @@
             </div>
         </div>
     </div>
-</div>
+
     <!-- Products Grid -->
     <div class="row g-4" id="products-grid">
         {% if products %}
@@ -240,78 +237,389 @@
 
 {% block extra_css %}
 <style>
-    .search-wrapper {
+/* Global Variables */
+:root {
+    --primary-color: #28a745;
+    --primary-hover: #218838;
+    --danger-color: #dc3545;
+    --light-gray: #e0e0e0;
+    --dark-gray: #6c757d;
+    --white: #ffffff;
+    --shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
+    --shadow-md: 0 .5rem 1rem rgba(0,0,0,.15);
+}
+
+/* Container and Layout */
+.container-fluid {
+    padding: 1.5rem;
+}
+
+/* Header Styles */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    color: var(--dark-gray);
+}
+
+/* Search Section */
+.search-section {
     position: relative;
+    z-index: 1040;
+    background: var(--white);
+    margin-bottom: 2rem;
+}
+
+.search-container {
+    position: relative;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.search-wrapper {
+    position: relative;
+    max-width: 500px;
     width: 100%;
+    z-index: 1040;
 }
 
 .search-input {
-    padding-right: 40px;
-    border-radius: 20px;
-    border: 2px solid #e0e0e0;
+    width: 100%;
+    padding: 0.75rem 3rem 0.75rem 1.25rem;
+    border: 2px solid var(--light-gray);
+    border-radius: 2rem;
+    font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .search-input:focus {
-    border-color: #28a745;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    outline: none;
 }
 
 .search-button {
     position: absolute;
     right: 0;
-    top: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3rem;
     height: 100%;
-    width: 50px;
     border: none;
     background: none;
-    color: #6c757d;
+    color: var(--dark-gray);
     cursor: pointer;
-    transition: color 0.3s ease;
 }
 
-.search-button:hover {
-    color: #28a745;
+/* Filter Section */
+.filter-section {
+    position: relative;
+    z-index: 1040;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Dropdown Styles */
+.dropdown {
+    position: relative;
 }
 
 .dropdown-menu {
-    max-height: 300px;
-    overflow-y: auto;
+    position: absolute;
+    z-index: 1050 !important;
+    min-width: 160px;
+    padding: 0.5rem 0;
+    margin: 0.125rem 0 0;
+    background-color: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: 0.375rem;
+    box-shadow: var(--shadow-md);
+}
+
+.dropdown-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--dark-gray);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--primary-color);
 }
 
 .dropdown-item.active {
-    background-color: #28a745;
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+/* Product Cards */
+.product-card {
+    position: relative;
+    z-index: 1;
+    background: var(--white);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+    z-index: 1;
+}
+
+.product-image {
+    height: 200px;
+    width: 100%;
+    object-fit: cover;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+.product-details {
+    padding: 1.25rem;
+}
+
+.product-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.product-price {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-success {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--white);
+}
+
+.btn-success:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.btn-outline-success {
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+}
+
+.btn-outline-success:hover {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+/* Alert Messages */
+.alert {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1060;
+    min-width: 300px;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-md);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Cart Badge */
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    background-color: var(--danger-color);
+    color: var(--white);
+}
+
+/* Navbar styles */
+.navbar-custom {
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1030;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #333;
+}
+
+.nav-link {
+    color: #333;
+    font-weight: bold;
+}
+
+.nav-link:hover {
+    color: var(--primary-color);
+}
+
+.btn-account {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    font-size: 1rem;
+    padding: 8px 16px;
+    transition: all 0.3s;
+}
+
+.btn-account:hover {
+    background-color: var(--primary-hover);
     color: white;
 }
 
-/* Hover effect for filter buttons */
-.btn-outline-secondary:hover {
-    background-color: #f8f9fa;
-    border-color: #28a745;
-    color: #28a745;
+/* Responsive Design */
+@media (min-width: 768px) {
+    .search-container {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-wrapper {
+        flex: 0 0 40%;
+    }
+
+    .filter-section {
+        justify-content: flex-end;
+    }
 }
-    .product-card {
-        transition: transform 0.2s ease-in-out;
+
+@media (max-width: 767px) {
+    .search-wrapper {
+        max-width: 100%;
     }
 
-    .product-card:hover {
-        transform: translateY(-5px);
+    .filter-section {
+        width: 100%;
+        justify-content: center;
     }
 
-    .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
+    .alert {
+        left: 1rem;
+        right: 1rem;
+        min-width: auto;
     }
+}
 
-    .btn-success:hover {
-        background-color: #218838;
-        border-color: #1e7e34;
-    }
+/* Card and Form Styles */
+.card {
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
 
-    .form-control:focus {
-        border-color: #28a745;
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-    }
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--light-gray);
+    padding: 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.form-control {
+    border: 1px solid var(--light-gray);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Utility Classes */
+.text-success { color: var(--primary-color) !important; }
+.bg-light { background-color: #f8f9fa !important; }
+.shadow-sm { box-shadow: var(--shadow-sm) !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.mb-0 { margin-bottom: 0 !important; }
+
+/* Additional Styles */
+.divider {
+    height: 1px;
+    background-color: var(--light-gray);
+    margin: 1rem 0;
+}
+
+.badge {
+    padding: 0.5em 0.75em;
+    font-weight: 500;
+}
+
+.category-tag {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--primary-color);
+    border-radius: 1rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Footer styles */
+.footer {
+    background-color: #333;
+    color: white;
+    padding: 20px 0;
+    margin-top: auto;
+}
+
+.footer p {
+    margin: 0;
+}
+
+.footer i {
+    color: white;
+    margin: 0 5px;
+}
+
+.footer i:hover {
+    color: var(--primary-color);
+}
 </style>
 {% endblock %}
 
